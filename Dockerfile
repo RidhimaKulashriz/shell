@@ -7,6 +7,9 @@ FROM node:22-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Next.js evaluates database-backed route configuration during the build. Render
+# injects the real DATABASE_URL at runtime, so use safe build-only placeholders.
+ENV DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/build APP_SECRET=build-only-secret
 RUN npm run build
 
 FROM node:22-alpine
