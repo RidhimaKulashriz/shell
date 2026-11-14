@@ -78,16 +78,19 @@ See `.env.example`. Everything external sits behind an interface with a working 
 | Maps | PulseMap props (components/maps.tsx) | brand SVG map | `MAP_PROVIDER=maplibre` |
 | KYC, telephony masking, speech-to-text | provider hooks | consent flag / info dialog / browser STT | `KYC_PROVIDER`, `TELEPHONY_PROVIDER`, `STT_PROVIDER` |
 
-## Deploy
+## Production runbook
 
 Vercel plus managed Postgres, or Docker on a VPS:
 
 ```bash
-docker build -t shell . && docker run -p 3000:3000 --env-file .env shell
+docker build -t shell . && docker run --env-file .env -p 3000:3000 shell
 ```
 
-The container pushes the schema and starts the server. Set `NEXT_PUBLIC_SITE_URL`, `APP_SECRET`, and `DATABASE_URL`.
-Put the Razorpay webhook at `/api/webhooks/razorpay`. `/api/health` is the health check. CI is in `.github/workflows/ci.yml`.
+The container applies the Drizzle schema and starts the server. Set `NEXT_PUBLIC_SITE_URL`, a long random `APP_SECRET`, and `DATABASE_URL` in every non-local environment. `/api/health` is an unauthenticated readiness check and returns database dependency status, latency, runtime version, uptime, and a request ID without returning secrets. `/manus-routes.json` is the canonical page-route manifest used by platform tooling.
+
+The default configuration is intentionally safe for demos: OTP, payments, notifications, planning, and maps use local/mock adapters. Before opening the service to real users, set `OTP_PROVIDER=msg91` with its credentials, configure Razorpay keys and webhook verification, choose live notification and map providers, set `SHOW_DEMO_DATA=false`, and use `SESSION_COOKIE_SAMESITE=none` only when the app is served over HTTPS inside an embedded preview. Never commit `.env` or provider credentials.
+
+For a pre-push quality gate, run `npm run validate`. CI also provisions PostgreSQL, pushes the schema, builds the app, and runs the API-level Playwright flow. Put the Razorpay webhook at `/api/webhooks/razorpay` and keep `/api/health` as the container/load-balancer health path.
 
 ## Honest status
 

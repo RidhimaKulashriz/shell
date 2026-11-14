@@ -8,6 +8,7 @@ import { otpCodes, sessions, users, customerProfiles } from "@/db/schema";
 export const SESSION_COOKIE = "shell_session";
 export const OPS_ROLES = ["OPS", "SUPER_ADMIN"];
 const SECRET = process.env.APP_SECRET ?? "shell-dev-secret-change-me";
+const sessionSameSite = process.env.SESSION_COOKIE_SAMESITE === "none" ? "none" : "lax";
 
 export const sha = (s: string) => crypto.createHash("sha256").update(SECRET + s).digest("hex");
 
@@ -28,11 +29,12 @@ const mockProvider: OtpProvider = { name: "mock", async send() {} };
 const msg91Provider: OtpProvider = {
   name: "msg91",
   async send(phone, code) {
-    await fetch("https://control.msg91.com/api/v5/otp", {
+    const response = await fetch("https://control.msg91.com/api/v5/otp", {
       method: "POST",
       headers: { authkey: process.env.MSG91_AUTH_KEY ?? "", "content-type": "application/json" },
       body: JSON.stringify({ template_id: process.env.MSG91_TEMPLATE_ID, mobile: phone.replace("+", ""), otp: code }),
     });
+    if (!response.ok) throw new Error(`OTP provider rejected request (${response.status})`);
   },
 };
 export const otpProvider = (): OtpProvider => (process.env.OTP_PROVIDER === "msg91" ? msg91Provider : mockProvider);
@@ -66,7 +68,7 @@ export async function createSession(userId: string) {
   const token = crypto.randomBytes(32).toString("hex");
   const h = await headers();
   await db.insert(sessions).values({ token: sha(token), userId, expiresAt: new Date(Date.now() + 30 * 86400000), ip: h.get("x-forwarded-for")?.split(",")[0] ?? null, userAgent: h.get("user-agent")?.slice(0, 200) ?? null });
-  (await cookies()).set(SESSION_COOKIE, token, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" && process.env.INSECURE_COOKIES !== "1", path: "/", maxAge: 30 * 86400 });
+  (await cookies()).set(SESSION_COOKIE, token, { httpOnly: true, sameSite: sessionSameSite, secure: sessionSameSite === "none" || (process.env.NODE_ENV === "production" && process.env.INSECURE_COOKIES !== "1"), path: "/", maxAge: 30 * 86400 });
   await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, userId));
 }
 

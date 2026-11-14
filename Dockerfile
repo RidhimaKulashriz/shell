@@ -14,5 +14,5 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app ./
 EXPOSE 3000
-# Push the schema, then start. The app seeds the demo society on first run against an empty database.
-CMD ["sh", "-c", "npx drizzle-kit push --force && npm run start"]
+# Apply the schema, then start. The app seeds the demo society on first run against an empty database.
+CMD ["sh", "-c", "npm run db:push && npm run start"]

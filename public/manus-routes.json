@@ -1,0 +1,288 @@
+{
+  "routes": [
+    {
+      "path": "/about",
+      "title": "Shell \u00b7 About"
+    },
+    {
+      "path": "/careers",
+      "title": "Shell \u00b7 Careers"
+    },
+    {
+      "path": "/contact",
+      "title": "Shell \u00b7 Contact"
+    },
+    {
+      "path": "/earn",
+      "title": "Shell \u00b7 Earn"
+    },
+    {
+      "path": "/guides/:slug",
+      "title": "Shell \u00b7 Guides Slug"
+    },
+    {
+      "path": "/guides",
+      "title": "Shell \u00b7 Guides"
+    },
+    {
+      "path": "/help",
+      "title": "Shell \u00b7 Help"
+    },
+    {
+      "path": "/hostels-offices",
+      "title": "Shell \u00b7 Hostels Offices"
+    },
+    {
+      "path": "/how-it-works",
+      "title": "Shell \u00b7 How It Works"
+    },
+    {
+      "path": "/legal/:slug",
+      "title": "Shell \u00b7 Legal Slug"
+    },
+    {
+      "path": "/packs/:slug",
+      "title": "Shell \u00b7 Packs Slug"
+    },
+    {
+      "path": "/packs",
+      "title": "Shell \u00b7 Packs"
+    },
+    {
+      "path": "/",
+      "title": "Shell"
+    },
+    {
+      "path": "/press",
+      "title": "Shell \u00b7 Press"
+    },
+    {
+      "path": "/pricing",
+      "title": "Shell \u00b7 Pricing"
+    },
+    {
+      "path": "/safety",
+      "title": "Shell \u00b7 Safety"
+    },
+    {
+      "path": "/services/:slug",
+      "title": "Shell \u00b7 Services Slug"
+    },
+    {
+      "path": "/services",
+      "title": "Shell \u00b7 Services"
+    },
+    {
+      "path": "/societies",
+      "title": "Shell \u00b7 Societies"
+    },
+    {
+      "path": "/status",
+      "title": "Shell \u00b7 Status"
+    },
+    {
+      "path": "/tasks/:slug",
+      "title": "Shell \u00b7 Tasks Slug"
+    },
+    {
+      "path": "/waitlist",
+      "title": "Shell \u00b7 Waitlist"
+    },
+    {
+      "path": "/waitlist-map",
+      "title": "Shell \u00b7 Waitlist Map"
+    },
+    {
+      "path": "/app/login",
+      "title": "Shell \u00b7 App Login"
+    },
+    {
+      "path": "/app/onboarding",
+      "title": "Shell \u00b7 App Onboarding"
+    },
+    {
+      "path": "/app/circle",
+      "title": "Shell \u00b7 App Circle"
+    },
+    {
+      "path": "/app/disputes",
+      "title": "Shell \u00b7 App Disputes"
+    },
+    {
+      "path": "/app/me",
+      "title": "Shell \u00b7 App Me"
+    },
+    {
+      "path": "/app/notifications",
+      "title": "Shell \u00b7 App Notifications"
+    },
+    {
+      "path": "/app/orders/:id/invoice",
+      "title": "Shell \u00b7 App Orders Id Invoice"
+    },
+    {
+      "path": "/app/orders/:id",
+      "title": "Shell \u00b7 App Orders Id"
+    },
+    {
+      "path": "/app/orders",
+      "title": "Shell \u00b7 App Orders"
+    },
+    {
+      "path": "/app",
+      "title": "Shell \u00b7 App"
+    },
+    {
+      "path": "/app/plans/:id",
+      "title": "Shell \u00b7 App Plans Id"
+    },
+    {
+      "path": "/app/request/:id",
+      "title": "Shell \u00b7 App Request Id"
+    },
+    {
+      "path": "/app/routines",
+      "title": "Shell \u00b7 App Routines"
+    },
+    {
+      "path": "/app/support",
+      "title": "Shell \u00b7 App Support"
+    },
+    {
+      "path": "/app/wallet",
+      "title": "Shell \u00b7 App Wallet"
+    },
+    {
+      "path": "/app/wrapped",
+      "title": "Shell \u00b7 App Wrapped"
+    },
+    {
+      "path": "/circle/:code",
+      "title": "Shell \u00b7 Circle Code"
+    },
+    {
+      "path": "/earn/apply",
+      "title": "Shell \u00b7 Earn Apply"
+    },
+    {
+      "path": "/earn/login",
+      "title": "Shell \u00b7 Earn Login"
+    },
+    {
+      "path": "/earn/portal/earnings",
+      "title": "Shell \u00b7 Earn Portal Earnings"
+    },
+    {
+      "path": "/earn/portal/growth",
+      "title": "Shell \u00b7 Earn Portal Growth"
+    },
+    {
+      "path": "/earn/portal/jobs/:id",
+      "title": "Shell \u00b7 Earn Portal Jobs Id"
+    },
+    {
+      "path": "/earn/portal",
+      "title": "Shell \u00b7 Earn Portal"
+    },
+    {
+      "path": "/earn/portal/passport",
+      "title": "Shell \u00b7 Earn Portal Passport"
+    },
+    {
+      "path": "/earn/portal/training",
+      "title": "Shell \u00b7 Earn Portal Training"
+    },
+    {
+      "path": "/offline",
+      "title": "Shell \u00b7 Offline"
+    },
+    {
+      "path": "/ops/analytics",
+      "title": "Shell \u00b7 Ops Analytics"
+    },
+    {
+      "path": "/ops/catalog",
+      "title": "Shell \u00b7 Ops Catalog"
+    },
+    {
+      "path": "/ops/content",
+      "title": "Shell \u00b7 Ops Content"
+    },
+    {
+      "path": "/ops/customers",
+      "title": "Shell \u00b7 Ops Customers"
+    },
+    {
+      "path": "/ops/dispatch",
+      "title": "Shell \u00b7 Ops Dispatch"
+    },
+    {
+      "path": "/ops/disputes",
+      "title": "Shell \u00b7 Ops Disputes"
+    },
+    {
+      "path": "/ops/finance",
+      "title": "Shell \u00b7 Ops Finance"
+    },
+    {
+      "path": "/ops/fraud",
+      "title": "Shell \u00b7 Ops Fraud"
+    },
+    {
+      "path": "/ops/helpers",
+      "title": "Shell \u00b7 Ops Helpers"
+    },
+    {
+      "path": "/ops/jobs/:id",
+      "title": "Shell \u00b7 Ops Jobs Id"
+    },
+    {
+      "path": "/ops/jobs",
+      "title": "Shell \u00b7 Ops Jobs"
+    },
+    {
+      "path": "/ops",
+      "title": "Shell \u00b7 Ops"
+    },
+    {
+      "path": "/ops/pricing",
+      "title": "Shell \u00b7 Ops Pricing"
+    },
+    {
+      "path": "/ops/requests/:id",
+      "title": "Shell \u00b7 Ops Requests Id"
+    },
+    {
+      "path": "/ops/requests",
+      "title": "Shell \u00b7 Ops Requests"
+    },
+    {
+      "path": "/ops/safety",
+      "title": "Shell \u00b7 Ops Safety"
+    },
+    {
+      "path": "/ops/settings",
+      "title": "Shell \u00b7 Ops Settings"
+    },
+    {
+      "path": "/ops/societies",
+      "title": "Shell \u00b7 Ops Societies"
+    },
+    {
+      "path": "/p/:slug",
+      "title": "Shell \u00b7 P Slug"
+    },
+    {
+      "path": "/p/:slug/resume",
+      "title": "Shell \u00b7 P Slug Resume"
+    },
+    {
+      "path": "/s/:token",
+      "title": "Shell \u00b7 S Token"
+    },
+    {
+      "path": "/society",
+      "title": "Shell \u00b7 Society"
+    }
+  ]
+}
