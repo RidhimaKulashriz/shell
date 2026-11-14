@@ -83,4 +83,4 @@ export function scanMessage(body: string): LeakResult {
   return { hit: flags.size > 0, flags: [...flags], redacted };
 }
 
-export const LEAK_WARNING = "Shell ke bahar baat karne se guarantee aur damage cover khatam ho jaata hai. Number ya UPI yahan share mat karo.";
+export const LEAK_WARNING = "Taking this conversation outside Shell voids the guarantee and damage cover. Please do not share numbers or UPI IDs here.";

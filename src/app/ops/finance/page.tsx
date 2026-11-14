@@ -30,6 +30,6 @@ export default async function Page() {
       <section><h2 className="display text-xl">Payout queue</h2><Table cols={["Helper", "Amount", "Method", "Status", "UTR"]} rows={pos.map(({ p, h }) => [h, inr(p.amount), p.method, <Badge key="s">{p.status}</Badge>, p.utr ?? "-"])} /></section>
       <section><h2 className="display text-xl">Expense wallet audit</h2><Table cols={["Task", "Cap", "Spent", "Approved", "Refunded", "Status"]} rows={ex.map(({ e, t }) => [t, inr(e.cap), inr(e.spent), inr(e.approvedAmount), inr(e.refundedAmount), e.status])} /></section>
       <section><h2 className="display text-xl">Recent journal lines</h2><Table cols={["When", "Account", "Debit", "Credit", "Memo"]} rows={recent.map((l) => [fmtDateTime(l.ts), l.account, inr(l.debit), inr(l.credit), l.memo])} /></section>
-      <p className="text-xs opacity-70">GST invoice: generated per plan from captured payments. Export for the accountant: copy the tables above (CSV export lands with the finance role permissions).</p></div>
+      <section><h2 className="display text-xl">Exports</h2><p className="text-xs opacity-70">CSV downloads are logged in the audit trail. Ledger and payments need the finance or lead role. GST invoices are generated per plan from the customer order page.</p><div className="mt-2 flex flex-wrap gap-2">{["ledger", "payments", "jobs", "helpers", "customers", "waitlist"].map((x) => <a key={x} className="btn btn-cream btn-sm" href={`/api/ops/export/${x}`}>{x}.csv</a>)}</div></section></div>
   );
 }

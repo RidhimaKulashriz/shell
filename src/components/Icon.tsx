@@ -1,4 +1,4 @@
-// Custom 40-icon set. One wobbly 2px line style, sand/sage spot fill offset like a misregistered print.
+// Custom icon set. One consistent 2px line style, sand/sage spot fill offset like a misregistered print.
 // The wobble comes from the #wobble filter defined once in <SvgDefs/>.
 
 const ICONS = {
@@ -89,11 +89,11 @@ export function SvgDefs() {
       <defs>
         <filter id="wobble" x="-5%" y="-5%" width="110%" height="110%">
           <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="4" result="n" />
-          <feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="0.8" />
         </filter>
         <filter id="ink" x="-10%" y="-10%" width="120%" height="120%">
           <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="9" result="t" />
-          <feDisplacementMap in="SourceGraphic" in2="t" scale="1.8" result="d" />
+          <feDisplacementMap in="SourceGraphic" in2="t" scale="1.2" result="d" />
           <feGaussianBlur in="d" stdDeviation="0.25" />
         </filter>
       </defs>

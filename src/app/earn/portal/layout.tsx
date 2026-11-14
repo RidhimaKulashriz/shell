@@ -20,7 +20,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
       <OfflineBanner />
       <header className="flex items-center justify-between px-4 pt-4 text-forest"><Wordmark size={26} /><span className="mono text-xs">Earn · {h.displayName.split(" ")[0]}</span></header>
       <div className="px-4 pt-4">{children}</div>
-      <nav aria-label="Helper" className="fixed inset-x-0 bottom-0 z-40 border-t-2 border-ink bg-paper"><ul className="mx-auto flex max-w-2xl">{tabs.map(([href, l, ic]) => <li key={href} className="flex-1"><Link href={href} className="flex flex-col items-center gap-0.5 py-2 text-xs font-bold"><Icon name={ic} size={26} tone="none" />{l}</Link></li>)}</ul></nav>
+      <nav aria-label="Helper" className="fixed inset-x-0 bottom-0 z-40 border-t border-ink/20 bg-paper"><ul className="mx-auto flex max-w-2xl">{tabs.map(([href, l, ic]) => <li key={href} className="flex-1"><Link href={href} className="flex flex-col items-center gap-0.5 py-2 text-xs font-bold"><Icon name={ic} size={26} tone="none" />{l}</Link></li>)}</ul></nav>
     </div>
   );
 }

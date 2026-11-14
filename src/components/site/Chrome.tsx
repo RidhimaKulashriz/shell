@@ -17,7 +17,7 @@ export function LangToggle({ lang, dark = false }: { lang: string; dark?: boolea
   };
   const cls = (on: boolean) => `px-2.5 py-1 rounded-full text-sm font-bold ${on ? (dark ? "bg-cream text-tide" : "bg-forest text-cream") : ""}`;
   return (
-    <div className={`inline-flex items-center rounded-full border-2 ${dark ? "border-cream" : "border-ink"}`} role="group" aria-label="Language">
+    <div className={`inline-flex items-center rounded-full border ${dark ? "border-cream" : "border-ink/20"}`} role="group" aria-label="Language">
       <button className={cls(lang !== "hi")} aria-pressed={lang !== "hi"} onClick={() => set("en")}>
         EN
       </button>
@@ -70,7 +70,7 @@ export function Header({ lang, t }: { lang: string; t: L }) {
   ];
 
   return (
-    <header className={`sticky top-0 z-50 border-b-2 border-ink bg-paper transition-transform duration-300 ${hidden ? "-translate-y-full" : ""}`}>
+    <header className={`sticky top-0 z-50 border-b border-ink/20 bg-paper transition-transform duration-300 ${hidden ? "-translate-y-full" : ""}`}>
       <div className={`mx-auto flex max-w-7xl items-center justify-between px-4 transition-all duration-300 md:px-8 ${small ? "h-12" : "h-16"}`}>
         <Link href="/" aria-label="Shell home" className="text-forest">
           <Wordmark size={small ? 22 : 28} />
@@ -83,7 +83,7 @@ export function Header({ lang, t }: { lang: string; t: L }) {
               </Link>
               {n.mega && mega && (
                 <div className="absolute left-1/2 top-full w-[620px] -translate-x-1/2 pt-3" onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setMega(false)}>
-                  <div className="grid grid-cols-2 gap-4 rounded-[28px] border-2 border-ink bg-paper p-5 shadow-[6px_6px_0_var(--color-ink)]">
+                  <div className="grid grid-cols-2 gap-4 rounded-2xl border border-ink/20 bg-paper p-5 shadow-[0_22px_44px_-30px_rgba(5,31,32,0.6)]">
                     {svc.map((s) => (
                       <Link key={s.n} href={s.href} className="relative flex gap-3 rounded-2xl bg-cream p-3 hover:bg-sand/70" style={{ transform: `rotate(${s.rot}deg)` }}>
                         <Icon name={s.icon} size={44} />
@@ -105,7 +105,7 @@ export function Header({ lang, t }: { lang: string; t: L }) {
           <Pill href="/waitlist" variant="sun" size="sm" className="hidden sm:inline-flex" data-cta="header">
             {t["nav.waitlist"]}
           </Pill>
-          <button className="grid h-11 w-11 place-items-center rounded-full border-2 border-ink lg:hidden" aria-label={open ? t["nav.close"] : t["nav.menu"]} aria-expanded={open} onClick={() => setOpen(!open)}>
+          <button className="grid h-11 w-11 place-items-center rounded-full border border-ink/20 lg:hidden" aria-label={open ? t["nav.close"] : t["nav.menu"]} aria-expanded={open} onClick={() => setOpen(!open)}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
               {open ? <path d="M5 5 L19 19 M19 5 L5 19" /> : <path d="M4 8 H20 M4 16 H20" />}
             </svg>
@@ -116,7 +116,7 @@ export function Header({ lang, t }: { lang: string; t: L }) {
         <div className="fixed inset-0 top-[64px] z-40 flex flex-col justify-between overflow-y-auto bg-paper px-6 pb-8 pt-6 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
           <nav className="flex flex-col gap-1">
             {NAV.map((n, i) => (
-              <Link key={n.href} href={n.href} className="display border-b-2 border-dashed border-ink/20 py-3 text-4xl" style={{ transform: `rotate(${i % 2 ? 0.6 : -0.6}deg)` }}>
+              <Link key={n.href} href={n.href} className="display border-b border-dashed border-ink/20 py-3 text-4xl" style={{ transform: `rotate(${i % 2 ? 0.6 : -0.6}deg)` }}>
                 {t[n.k]}
               </Link>
             ))}
@@ -167,7 +167,7 @@ export function WhatsAppFab({ lead }: { lead: string }) {
     setHref(`https://wa.me/${num}?text=${encodeURIComponent(`${lead} ${location.pathname}`)}`);
   }, [path, lead, num]);
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" onClick={() => track("whatsapp_click", { path })} aria-label="Chat with Shell on WhatsApp" className="fixed bottom-4 right-4 z-40 grid h-14 w-14 place-items-center rounded-full border-2 border-ink bg-sage text-tide shadow-[0_4px_0_var(--color-ink)] active:translate-y-1">
+    <a href={href} target="_blank" rel="noopener noreferrer" onClick={() => track("whatsapp_click", { path })} aria-label="Chat with Shell on WhatsApp" className="fixed bottom-4 right-4 z-40 grid h-14 w-14 place-items-center rounded-full border border-ink/20 bg-sage text-tide shadow-sm active:translate-y-1">
       <Icon name="chat" size={30} tone="none" />
     </a>
   );
@@ -186,7 +186,7 @@ export function CookieConsent({ t }: { t: L }) {
   };
   if (state === "hidden") return null;
   return (
-    <div role="dialog" aria-label="Cookie choices" className="fixed bottom-20 left-3 z-50 max-w-[340px] rotate-[-1.2deg] rounded-[22px] border-2 border-ink bg-sand p-4 shadow-[5px_5px_0_var(--color-ink)] sm:bottom-4">
+    <div role="dialog" aria-label="Cookie choices" className="fixed bottom-20 left-3 z-50 max-w-[340px] rotate-[-1.2deg] rounded-xl border border-ink/20 bg-sand p-4 shadow-[0_22px_44px_-30px_rgba(5,31,32,0.6)] sm:bottom-4">
       <div className="display text-lg">{t["cookie.title"]}</div>
       <p className="mt-1 text-sm">{t["cookie.body"]}</p>
       {state === "custom" && (
@@ -245,7 +245,7 @@ export function SiteEffects() {
       ))}
       <style>{`@keyframes fall{to{transform:translateY(105vh) rotate(540deg)}}`}</style>
       <div className="absolute inset-0 grid place-items-center">
-        <div className="text-center"><Stamp label="Chai break unlocked" large tone="brick" /><p className="hand mt-4 text-3xl text-ink">Chai pee lo. Hum dekh lenge.</p></div>
+        <div className="text-center"><Stamp label="All handled" large tone="brick" /><p className="hand mt-4 text-3xl text-ink">Sit back. We have it from here.</p></div>
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { ledgerEntries, payouts, tasks, plans, helpers, payments } from "@/db/schema";
-import { assertBalanced, capture, expenseHold, payout as payoutJournal, refund as refundJournal, release, type Entry } from "@/lib/ledger";
+import { assertBalanced, capture, expenseHold, payout as payoutJournal, refund as refundJournal, release, walletTopUp, type Entry } from "@/lib/ledger";
 import { payoutGuard } from "@/lib/statemachine";
 import { activePricing } from "@/lib/data";
 
@@ -11,6 +11,15 @@ export async function postJournal(entries: Entry[], refType: string, refId: stri
   const journalId = crypto.randomUUID();
   await db.insert(ledgerEntries).values(entries.map((e) => ({ journalId, account: e.account, debit: e.debit, credit: e.credit, refType, refId, memo: e.memo })));
   return journalId;
+}
+
+/** Idempotent per key: a repeated key returns the earlier result and never double-credits. */
+export async function recordWalletTopUp(userId: string, key: string, amount: number) {
+  const refId = `${userId}:${key}`;
+  const dup = await db.select({ id: ledgerEntries.id }).from(ledgerEntries).where(and(eq(ledgerEntries.refType, "wallet_topup"), eq(ledgerEntries.refId, refId))).limit(1);
+  if (dup.length) return { duplicate: true as const };
+  await postJournal(walletTopUp(amount), "wallet_topup", refId);
+  return { duplicate: false as const };
 }
 
 export async function recordCapture(planId: string, amount: number, credits = 0) {

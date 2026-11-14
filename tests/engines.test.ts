@@ -10,7 +10,7 @@ import { haversine, latLngToHex, orderStops, pointInPolygon, impossibleSpeed } f
 const tpl = (slug: string, baseRate: number, over: Partial<TemplateLike> = {}): TemplateLike => ({ slug, name: slug, baseRate, unit: "job", minutesPerUnit: 60, sizeFactors: { small: 0.8, medium: 1, large: 1.4 }, ...over });
 
 describe("keyword demo engine", () => {
-  it("turns the demo Hinglish sentence into four tasks in order", () => {
+  it("turns the demo sentence into four tasks in order", () => {
     expect(matchKeywords(DEMO_SENTENCE).items.map((i) => i.slug)).toEqual(["clean-full-home", "groceries", "wardrobe-organise", "decoration"]);
   });
   it("handles bartan, hours and quantity", () => {

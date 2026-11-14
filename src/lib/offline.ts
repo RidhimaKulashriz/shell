@@ -1,5 +1,5 @@
 "use client";
-// Offline queue: failed writes are stored and replayed when the network returns ("Network nahi hai. Hum aapke actions save kar rahe hain.").
+// Offline queue: failed writes are stored and replayed when the network returns ("You are offline. We are saving your actions and will sync them when you reconnect.").
 const KEY = "shell_queue_v1";
 type Q = { url: string; method: string; body: unknown; ts: number };
 const read = (): Q[] => { try { return JSON.parse(localStorage.getItem(KEY) ?? "[]"); } catch { return []; } };
@@ -9,7 +9,7 @@ export async function send(url: string, body: unknown, method = "POST"): Promise
   try {
     const r = await fetch(url, { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
     const data = await r.json().catch(() => ({}));
-    return r.ok ? { ok: true, data } : { ok: false, data, error: data?.error?.message ?? "Kuch gadbad ho gayi" };
+    return r.ok ? { ok: true, data } : { ok: false, data, error: data?.error?.message ?? "Something went wrong. Please try again." };
   } catch {
     write([...read(), { url, method, body, ts: Date.now() }]);
     return { ok: true, queued: true };

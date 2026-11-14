@@ -15,10 +15,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
   const [catalog, config, f] = await Promise.all([catalogForClient(), activePricing(), db.select().from(faqs).where(eq(faqs.scope, "pricing")).orderBy(asc(faqs.displayOrder))]);
   return (
     <>
-      <PageHero eyebrow="koi hidden charge nahi" title="Price kaise" em="banta hai." sub="Task time x rate, plus travel (zero inside the society), plus a platform fee, plus a coordination fee on bigger plans. Everything shows as its own line." />
+      <PageHero eyebrow="no hidden charges" title="How prices" em="are built." sub="Task time x rate, plus travel (zero inside the society), plus a platform fee, plus a coordination fee on bigger plans. Everything shows as its own line." />
       <Section tone="paper">
         <div className="grid gap-4 md:grid-cols-4">
-          {[["Task price", "base rate x quantity x size"], ["Urgency", "same-day x1.2, Rush x1.5"], ["Platform fee", `max(${inr(config.feeFloor)}, ${Math.round(config.feePercent * 100)}% of subtotal)`], ["Coordination", `${inr(config.coordinationFee)} for ${config.coordinationMinTasks}+ tasks or Managed`]].map(([t, d], i) => <div key={t} className="rounded-2xl border-2 border-ink bg-cream p-4" style={{ transform: `rotate(${[-1, 0.7, -0.5, 1][i]}deg)` }}><b className="display text-xl">{t}</b><p className="mono mt-1 text-sm">{d}</p></div>)}
+          {[["Task price", "base rate x quantity x size"], ["Urgency", "same-day x1.2, Rush x1.5"], ["Platform fee", `max(${inr(config.feeFloor)}, ${Math.round(config.feePercent * 100)}% of subtotal)`], ["Coordination", `${inr(config.coordinationFee)} for ${config.coordinationMinTasks}+ tasks or Managed`]].map(([t, d], i) => <div key={t} className="rounded-2xl border border-ink/20 bg-cream p-4" style={{ transform: `rotate(${[-1, 0.7, -0.5, 1][i]}deg)` }}><b className="display text-xl">{t}</b><p className="mono mt-1 text-sm">{d}</p></div>)}
         </div>
         <p className="mt-6 max-w-3xl">Minimum order is {inr(config.minOrder)}. Neighbours who join a Shell Circle lower everyone&apos;s price: up to {Math.round(Math.max(...config.circleCurve.map((c) => c.discount)) * 100)}% off per flat. Tips go 100% to the helper.</p>
       </Section>

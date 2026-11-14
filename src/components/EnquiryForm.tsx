@@ -6,7 +6,7 @@ import { track } from "@/lib/analytics";
 export type Field = { name: string; label: string; type?: "text" | "email" | "tel" | "number" | "textarea" | "select"; options?: string[]; required?: boolean };
 
 /** Generic enquiry / contact form posting to /api/contact. Used for societies, hostels and offices, contact and "notify me". */
-export function EnquiryForm({ kind, fields, cta = "Bhejo", success = "Mil gaya. Hum jaldi baat karenge.", presets = {} }: { kind: string; fields: Field[]; cta?: string; success?: string; presets?: Record<string, string> }) {
+export function EnquiryForm({ kind, fields, cta = "Send", success = "Received. We will be in touch shortly.", presets = {} }: { kind: string; fields: Field[]; cta?: string; success?: string; presets?: Record<string, string> }) {
   const [v, setV] = useState<Record<string, string>>(presets);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -18,7 +18,7 @@ export function EnquiryForm({ kind, fields, cta = "Bhejo", success = "Mil gaya. 
     const r = await fetch("/api/contact", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind, name, phone, email, message, data: rest }) });
     const j = await r.json();
     setBusy(false);
-    if (!r.ok) { setErr(j.error?.message ?? "Kuch gadbad ho gayi"); track("form_error", { form: kind }); return; }
+    if (!r.ok) { setErr(j.error?.message ?? "Something went wrong. Please try again."); track("form_error", { form: kind }); return; }
     setDone(true); track("form_submit", { form: kind });
   };
   if (done) return <div className="receipt scallop-b text-center"><Stamp label="Received" tone="ink" large /><p className="display mt-4 text-2xl">{success}</p></div>;
@@ -33,7 +33,7 @@ export function EnquiryForm({ kind, fields, cta = "Bhejo", success = "Mil gaya. 
         </div>
       ))}
       {err && <p role="alert" className="text-sm font-semibold text-brick">{err}</p>}
-      <button className="btn btn-sun w-full" disabled={busy}>{busy ? "Bhej rahe hain..." : cta}</button>
+      <button className="btn btn-sun w-full" disabled={busy}>{busy ? "Sending..." : cta}</button>
     </form>
   );
 }

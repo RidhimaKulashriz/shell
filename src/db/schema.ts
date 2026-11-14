@@ -344,7 +344,7 @@ export const requests = pgTable(
     customerId: uuid("customer_id").notNull(),
     addressId: uuid("address_id"),
     rawText: text("raw_text").notNull(),
-    language: text("language").notNull().default("hinglish"),
+    language: text("language").notNull().default("en"),
     voiceUrl: text("voice_url"),
     transcript: text("transcript"),
     photos: jsonb("photos").$type<{ url: string; caption?: string; circles?: { x: number; y: number; label: string }[] }[]>().notNull().default([]),

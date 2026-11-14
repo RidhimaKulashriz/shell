@@ -8,7 +8,7 @@ import { latLngToHex } from "@/lib/geo";
 import { scanMessage } from "@/lib/leakage";
 import { logEvent } from "@/lib/plans";
 
-const schema = z.object({ text: z.string().trim().min(3, "Kuch likhiye").max(2000), voiceTranscript: z.string().max(2000).optional(), photos: z.array(z.object({ url: z.string().max(400000), caption: z.string().max(200).optional() })).max(5).default([]), deadlineAt: z.string().datetime().optional(), urgency: z.enum(["normal", "same_day", "rush"]).default("normal"), language: z.string().default("hinglish") });
+const schema = z.object({ text: z.string().trim().min(3, "Please write something").max(2000), voiceTranscript: z.string().max(2000).optional(), photos: z.array(z.object({ url: z.string().max(400000), caption: z.string().max(200).optional() })).max(5).default([]), deadlineAt: z.string().datetime().optional(), urgency: z.enum(["normal", "same_day", "rush"]).default("normal"), language: z.string().default("en") });
 
 export const POST = api(async ({ req, user }) => {
   const b = await body(req, schema);

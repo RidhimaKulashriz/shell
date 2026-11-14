@@ -19,10 +19,10 @@ export function PackCustomise({ slug, name, items, catalog, config }: { slug: st
       <div className="space-y-2">
         <h3 className="display text-2xl">Customise it</h3>
         {items.map((it, i) => (
-          <div key={it.label} className={`flex items-center gap-3 rounded-2xl border-2 border-ink p-3 ${on[i] ? "bg-paper" : "bg-cream opacity-60"}`}>
+          <div key={it.label} className={`flex items-center gap-3 rounded-2xl border border-ink/20 p-3 ${on[i] ? "bg-paper" : "bg-cream opacity-60"}`}>
             <input type="checkbox" className="h-5 w-5" checked={on[i]} onChange={() => setOn({ ...on, [i]: !on[i] })} aria-label={`Include ${it.label}`} />
             <span className="flex-1 font-semibold">{it.label}<span className="mono block text-xs font-normal opacity-60">T{it.offsetHours > 0 ? "+" : "-"}{Math.abs(it.offsetHours)}h</span></span>
-            <span className="flex items-center rounded-full border-2 border-ink"><button aria-label="Less" className="h-8 w-8" onClick={() => setQty({ ...qty, [i]: Math.max(1, qty[i] - 1) })}>−</button><span className="mono w-5 text-center">{qty[i]}</span><button aria-label="More" className="h-8 w-8" onClick={() => setQty({ ...qty, [i]: Math.min(10, qty[i] + 1) })}>+</button></span>
+            <span className="flex items-center rounded-full border border-ink/20"><button aria-label="Less" className="h-8 w-8" onClick={() => setQty({ ...qty, [i]: Math.max(1, qty[i] - 1) })}>−</button><span className="mono w-5 text-center">{qty[i]}</span><button aria-label="More" className="h-8 w-8" onClick={() => setQty({ ...qty, [i]: Math.min(10, qty[i] + 1) })}>+</button></span>
           </div>
         ))}
       </div>

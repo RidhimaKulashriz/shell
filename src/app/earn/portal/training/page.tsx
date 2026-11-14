@@ -12,7 +12,7 @@ export default async function Page() {
   const [ms, done] = await Promise.all([db.select().from(trainingModules).orderBy(asc(trainingModules.displayOrder)), db.select().from(helperTraining).where(eq(helperTraining.helperId, h.id))]);
   const passed = new Set(done.filter((d) => d.passedAt).map((d) => d.moduleSlug));
   return (
-    <div className="space-y-4"><h1 className="display text-3xl">Training</h1><p>Safety module pehli job se pehle zaroori hai. Pass mark 80%. Managed jobs ke liye ek shadow job bhi.</p>
+    <div className="space-y-4"><h1 className="display text-3xl">Training</h1><p>The safety module is required before your first job. The pass mark is 80%. Managed jobs also need one shadow job.</p>
       {ms.map((m) => <QuizModule key={m.slug} m={{ slug: m.slug, title: m.title, mandatory: m.mandatory, cards: m.cards, quiz: m.quiz.map((q) => ({ q: q.q, options: q.options })), passed: passed.has(m.slug) }} />)}
       <p className="text-sm">Shadow job: {h.shadowJobDone ? "done" : "pending"}.</p></div>
   );

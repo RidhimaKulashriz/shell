@@ -39,7 +39,7 @@ export function PlanBuilder({ requestId, defaultTitle, templates, draft, deadlin
   const [msg, setMsg] = useState("");
   const upd = (i: number, p: object) => setItems(items.map((x, j) => (j === i ? { ...x, ...p } : x)));
   return (
-    <div className="space-y-3 rounded-xl border-2 border-ink bg-cream p-3">
+    <div className="space-y-3 rounded-xl border border-ink/20 bg-cream p-3">
       <h2 className="display text-xl">Plan Builder</h2>
       <input className="field" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Plan title" />
       {items.map((it, i) => (
@@ -92,7 +92,7 @@ export function PricingEditor({ cfg }: { cfg: PricingConfig }) {
   const sim = quote({ lines: sample, config: draft });
   const field = (k: keyof typeof v, label: string, step = 1) => <label className="text-xs font-bold">{label}<input className="field !py-1" type="number" step={step} value={v[k]} onChange={(e) => setV({ ...v, [k]: Number(e.target.value) })} /></label>;
   return (
-    <div className="space-y-3 rounded-xl border-2 border-ink bg-cream p-3"><h2 className="display text-xl">Draft config (v{cfg.version + 1})</h2>
+    <div className="space-y-3 rounded-xl border border-ink/20 bg-cream p-3"><h2 className="display text-xl">Draft config (v{cfg.version + 1})</h2>
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">{field("minOrder", "Minimum order ₹")}{field("feeFloor", "Fee floor ₹")}{field("feePercent", "Fee percent %", 0.5)}{field("coordinationFee", "Coordination ₹")}{field("same_day", "Same-day x", 0.05)}{field("rush", "Rush x", 0.05)}{field("maxCircle", "Max Circle %")}</div>
       <div className="mono rounded-lg bg-paper p-2 text-xs"><b>Simulator</b> (3-task sample plan): live {inr(live.total)} vs draft {inr(sim.total)} (platform fee {inr(sim.platformFee)}, coordination {inr(sim.coordinationFee)})</div>
       <input className="field" placeholder="Reason for this change (required, logged)" value={reason} onChange={(e) => setReason(e.target.value)} />

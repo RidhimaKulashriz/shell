@@ -35,22 +35,22 @@ export async function draftRequest(text: string, photoCount = 0): Promise<Draft>
 
 type Q = { id: string; q: string; qHi: string; chips: string[]; answer?: string };
 const BANK: Record<string, Q[]> = {
-  "clean-full-home": [{ id: "bhk", q: "Ghar kitne BHK ka hai?", qHi: "घर कितने BHK का है?", chips: ["1 BHK", "2 BHK", "3 BHK", "4 BHK ya bada"] }],
-  "clean-room": [{ id: "rooms", q: "Kitne kamre?", qHi: "कितने कमरे?", chips: ["1", "2", "3", "4+"] }],
+  "clean-full-home": [{ id: "bhk", q: "How many bedrooms does the home have?", qHi: "घर कितने BHK का है?", chips: ["1 BHK", "2 BHK", "3 BHK", "4 BHK or larger"] }],
+  "clean-room": [{ id: "rooms", q: "How many rooms?", qHi: "कितने कमरे?", chips: ["1", "2", "3", "4+"] }],
   groceries: [
-    { id: "diet", q: "Koi dietary ya allergy note?", qHi: "कोई खान-पान या एलर्जी नोट?", chips: ["Nahi", "Veg only", "Allergy hai"] },
-    { id: "cap", q: "Kharch ki limit kya rakhein?", qHi: "खर्च की सीमा क्या रखें?", chips: ["₹1,000", "₹2,000", "₹3,000", "Aap decide karo"] },
+    { id: "diet", q: "Any dietary or allergy notes?", qHi: "कोई खान-पान या एलर्जी नोट?", chips: ["No", "Veg only", "Has allergies"] },
+    { id: "cap", q: "What spending limit should we set?", qHi: "खर्च की सीमा क्या रखें?", chips: ["₹1,000", "₹2,000", "₹3,000", "You decide"] },
   ],
-  decoration: [{ id: "occasion", q: "Kis occasion ke liye?", qHi: "किस मौके के लिए?", chips: ["Birthday", "Anniversary", "Festival", "Guests ke liye"] }],
-  "wardrobe-organise": [{ id: "wardrobes", q: "Kitni wardrobe?", qHi: "कितनी अलमारी?", chips: ["1", "2", "3 ya zyada"] }],
-  "event-help": [{ id: "guests", q: "Kitne guests?", qHi: "कितने मेहमान?", chips: ["10 tak", "10 se 25", "25 se zyada"] }],
-  "excel-help": [{ id: "excel", q: "Kaun sa kaam: formulas, pivot ya data cleaning?", qHi: "कौन सा काम: फ़ॉर्मूला, पिवट या डेटा क्लीनिंग?", chips: ["Formulas", "Pivot / charts", "Data cleaning", "Pata nahi"] }],
-  tutoring: [{ id: "subject", q: "Kaun sa subject aur class?", qHi: "कौन सा विषय और कक्षा?", chips: ["Maths", "Science", "English", "Commerce"] }],
-  "pet-walk": [{ id: "pet", q: "Kutte ka swabhav kaisa hai?", qHi: "कुत्ते का स्वभाव कैसा है?", chips: ["Shaant", "Energetic", "Thoda ghabrata hai"] }],
+  decoration: [{ id: "occasion", q: "What is the occasion?", qHi: "किस मौके के लिए?", chips: ["Birthday", "Anniversary", "Festival", "For guests"] }],
+  "wardrobe-organise": [{ id: "wardrobes", q: "How many wardrobes?", qHi: "कितनी अलमारी?", chips: ["1", "2", "3 or more"] }],
+  "event-help": [{ id: "guests", q: "How many guests?", qHi: "कितने मेहमान?", chips: ["Up to 10", "10 to 25", "More than 25"] }],
+  "excel-help": [{ id: "excel", q: "What kind of work: formulas, pivot tables or data cleaning?", qHi: "कौन सा काम: फ़ॉर्मूला, पिवट या डेटा क्लीनिंग?", chips: ["Formulas", "Pivot / charts", "Data cleaning", "Not sure"] }],
+  tutoring: [{ id: "subject", q: "Which subject and class?", qHi: "कौन सा विषय और कक्षा?", chips: ["Maths", "Science", "English", "Commerce"] }],
+  "pet-walk": [{ id: "pet", q: "What is the dog's temperament?", qHi: "कुत्ते का स्वभाव कैसा है?", chips: ["Calm", "Energetic", "A bit nervous"] }],
 };
 const GENERAL: Q[] = [
-  { id: "access", q: "Helper ghar kaise aayega?", qHi: "हेल्पर घर कैसे आएगा?", chips: ["Main ghar par hoon", "Guard ke paas chaabi", "Lockbox OTP"] },
-  { id: "time", q: "Kab tak ready chahiye?", qHi: "कब तक रेडी चाहिए?", chips: ["Aaj", "Kal subah", "Kal shaam", "Is hafte"] },
+  { id: "access", q: "How will the helper get in?", qHi: "हेल्पर घर कैसे आएगा?", chips: ["I will be home", "Key with the guard", "Lockbox OTP"] },
+  { id: "time", q: "When do you need it ready?", qHi: "कब तक रेडी चाहिए?", chips: ["Today", "Tomorrow morning", "Tomorrow evening", "This week"] },
 ];
 
 /** At most five questions, one at a time, each answered with chips. */

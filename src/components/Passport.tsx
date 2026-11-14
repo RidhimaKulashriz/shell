@@ -25,20 +25,20 @@ export function PassportBook({ data, autoOpen = true }: { data: PassportData; au
     <div ref={ref} className="mx-auto w-full max-w-[480px]" style={{ perspective: 1400 }}>
       <div className="relative aspect-[1.35/1]">
         {/* inside right page */}
-        <div className="absolute inset-0 grid grid-cols-2 overflow-hidden rounded-[18px] border-[3px] border-ink bg-paper text-ink shadow-[8px_8px_0_var(--color-ink)]">
+        <div className="absolute inset-0 grid grid-cols-2 overflow-hidden rounded-xl border-[3px] border-ink/20 bg-paper text-ink shadow-[0_22px_44px_-30px_rgba(5,31,32,0.6)]">
           <div className="border-r-2 border-dashed border-ink/30 p-3 sm:p-4">
             <div className="mono text-[9px] uppercase tracking-[0.2em] opacity-60">Shell Skill Passport</div>
-            <div className="mt-2 flex items-center gap-2"><span className="grid h-14 w-12 place-items-center rounded-md border-2 border-ink bg-sand font-display text-xl">{data.name[0]}</span><div><div className="display text-lg leading-tight">{data.name}</div><div className="mono text-[10px]">{data.college ?? "Verified helper"}</div></div></div>
+            <div className="mt-2 flex items-center gap-2"><span className="grid h-14 w-12 place-items-center rounded-md border border-ink/20 bg-sand font-display text-xl">{data.name[0]}</span><div><div className="display text-lg leading-tight">{data.name}</div><div className="mono text-[10px]">{data.college ?? "Verified helper"}</div></div></div>
             <div className="mt-3 space-y-1 text-[11px]"><div className="mono">LEVEL {data.level}</div><div className="mono">JOBS {data.jobs} · RATING {data.rating ? data.rating.toFixed(1) : "new"}</div><div className="mono">LANG {data.languages.join(", ")}</div></div>
             <div className="mt-3 flex flex-wrap gap-1">{data.verified.map((v) => <span key={v} className="stamp !text-[8px]">{v}</span>)}</div>
-            <div className="mt-3 flex gap-1" aria-label="Level visas">{LEVELS.map((l, i) => <span key={l} className={`mono rounded border-2 border-ink px-1.5 py-0.5 text-[8px] ${i <= level ? "bg-sun" : "opacity-30"}`}>{l[0] + l.slice(1, 3).toLowerCase()}</span>)}</div>
+            <div className="mt-3 flex gap-1" aria-label="Level visas">{LEVELS.map((l, i) => <span key={l} className={`mono rounded border border-ink/20 px-1.5 py-0.5 text-[8px] ${i <= level ? "bg-sun" : "opacity-30"}`}>{l[0] + l.slice(1, 3).toLowerCase()}</span>)}</div>
             {data.qr && <div className="mt-2 h-14 w-14 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: data.qr }} aria-label="Verification QR code" />}
           </div>
           <div className="relative p-3 sm:p-4">
             <div className="mono text-[9px] uppercase tracking-[0.2em] opacity-60">Visas / stamps ({page + 1}/{pages})</div>
             <div className="mt-2 grid grid-cols-3 gap-2">
               {open && slice.map((s, i) => (
-                <div key={s.label} className="grid place-items-center rounded-lg border-2 border-dashed border-ink/30 p-1 text-center" style={{ transform: `rotate(${(i * 7) % 11 - 5}deg)` }}>
+                <div key={s.label} className="grid place-items-center rounded-lg border border-dashed border-ink/30 p-1 text-center" style={{ transform: `rotate(${(i * 7) % 11 - 5}deg)` }}>
                   <Icon name={s.icon} size={26} />
                   <Stamp label={s.label} delay={700 + i * 220} rot={-8 + i * 4} className="!text-[7px] !px-1" />
                 </div>
@@ -49,7 +49,7 @@ export function PassportBook({ data, autoOpen = true }: { data: PassportData; au
           </div>
         </div>
         {/* cover */}
-        <button onClick={() => setOpen(!open)} aria-label={open ? "Close passport" : "Open passport"} aria-expanded={open} className="page-flip absolute inset-0 rounded-[18px] border-[3px] border-ink bg-forest text-cream" style={{ transform: open ? "rotateY(-165deg)" : "rotateY(0)" }}>
+        <button onClick={() => setOpen(!open)} aria-label={open ? "Close passport" : "Open passport"} aria-expanded={open} className="page-flip absolute inset-0 rounded-xl border-[3px] border-ink/20 bg-forest text-cream" style={{ transform: open ? "rotateY(-165deg)" : "rotateY(0)" }}>
           <div className="grid h-full place-items-center p-6 text-center"><div><Icon name="shield" size={64} tone="sand" className="mx-auto" /><div className="display mt-2 text-3xl">SHELL</div><div className="mono mt-1 text-[10px] tracking-[0.3em] text-sand">SKILL PASSPORT</div></div></div>
         </button>
       </div>

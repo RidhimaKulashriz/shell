@@ -18,8 +18,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ f
     <div className="space-y-4">
       <h1 className="display text-3xl">Orders</h1>
       <div className="flex gap-2">{["active", "completed", "cancelled"].map((x) => <Link key={x} href={`/app/orders?f=${x}`} className="chip capitalize" aria-pressed={f === x}>{x}</Link>)}</div>
-      {rows.length === 0 && <p className="hand py-10 text-center text-2xl">Abhi kuch nahi. Peaceful hai, enjoy karo.</p>}
-      {rows.map(({ p, pct }) => <div key={p.id} className="rounded-2xl border-2 border-ink bg-paper p-4"><div className="flex justify-between"><b className="display text-xl">{p.title}</b><span className="mono">{inr(p.total)}</span></div><div className="mono text-xs opacity-70">{fmtDate(p.createdAt)} · {p.status === "sent" ? "plan ready" : `${pct}% ready`}</div><div className="mt-3 flex gap-2"><Link href={p.status === "sent" ? `/app/plans/${p.id}` : `/app/orders/${p.id}`} className="btn btn-forest btn-sm">Dekho</Link><Link href={`/app?text=${encodeURIComponent(p.title)}`} className="btn btn-cream btn-sm" onClick={undefined}>Rebook</Link></div></div>)}
+      {rows.length === 0 && <p className="hand py-10 text-center text-2xl">Nothing here yet.</p>}
+      {rows.map(({ p, pct }) => <div key={p.id} className="rounded-2xl border border-ink/20 bg-paper p-4"><div className="flex justify-between"><b className="display text-xl">{p.title}</b><span className="mono">{inr(p.total)}</span></div><div className="mono text-xs opacity-70">{fmtDate(p.createdAt)} · {p.status === "sent" ? "plan ready" : `${pct}% ready`}</div><div className="mt-3 flex gap-2"><Link href={p.status === "sent" ? `/app/plans/${p.id}` : `/app/orders/${p.id}`} className="btn btn-forest btn-sm">Dekho</Link><Link href={`/app?text=${encodeURIComponent(p.title)}`} className="btn btn-cream btn-sm" onClick={undefined}>Rebook</Link></div></div>)}
     </div>
   );
 }

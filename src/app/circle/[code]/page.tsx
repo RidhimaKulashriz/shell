@@ -16,7 +16,7 @@ export default async function Page({ params }: { params: Promise<{ code: string 
   const cfg = await activePricing();
   return (
     <main id="main" className="grid min-h-screen place-items-center bg-cream p-6">
-      <div className="receipt scallop-b max-w-sm text-center"><div className="mono text-xs">SHELL CIRCLE</div><h1 className="display mt-2 text-3xl" style={{ fontFamily: "var(--font-display)" }}>{c.title}</h1><p className="mono mt-1 text-sm">{fmtDateTime(c.windowStart)}</p><div className="perf" /><p>{c.currentFlats} of {c.maxFlats} flats joined. Price per flat: <b>{inr(Math.round(c.basePrice * (1 - circleDiscount(Math.max(c.currentFlats + 1, 1), cfg))))}</b> when you join.</p><Link href="/app/login" className="btn btn-sun mt-4">Login karke judo</Link></div>
+      <div className="receipt scallop-b max-w-sm text-center"><div className="mono text-xs">SHELL CIRCLE</div><h1 className="display mt-2 text-3xl" style={{ fontFamily: "var(--font-display)" }}>{c.title}</h1><p className="mono mt-1 text-sm">{fmtDateTime(c.windowStart)}</p><div className="perf" /><p>{c.currentFlats} of {c.maxFlats} flats joined. Price per flat: <b>{inr(Math.round(c.basePrice * (1 - circleDiscount(Math.max(c.currentFlats + 1, 1), cfg))))}</b> when you join.</p><Link href="/app/login" className="btn btn-sun mt-4">Log in to join</Link></div>
     </main>
   );
 }

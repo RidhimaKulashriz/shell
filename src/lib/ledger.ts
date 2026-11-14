@@ -1,5 +1,5 @@
 // Pure double-entry helpers. A journal must balance to zero.
-export type Account = "customer_cash" | "escrow" | "platform_revenue" | "helper_payable" | "expense_float" | "tax_payable" | "refunds" | "promo_cost";
+export type Account = "customer_cash" | "escrow" | "platform_revenue" | "helper_payable" | "expense_float" | "tax_payable" | "refunds" | "promo_cost" | "wallet_liability";
 export type Entry = { account: Account; debit: number; credit: number; memo: string };
 
 export function isBalanced(entries: Entry[]) {
@@ -46,4 +46,11 @@ export const expenseHold = (cap: number): Entry[] =>
   assertBalanced([
     { account: "escrow", debit: cap, credit: 0, memo: "Expense cap moved to float" },
     { account: "expense_float", debit: 0, credit: cap, memo: "Held for helper purchases" },
+  ]);
+
+/** Customer adds money to the Shell Wallet: cash in, matched by a wallet liability until it is spent or refunded. */
+export const walletTopUp = (amount: number): Entry[] =>
+  assertBalanced([
+    { account: "customer_cash", debit: amount, credit: 0, memo: "Wallet top-up received" },
+    { account: "wallet_liability", debit: 0, credit: amount, memo: "Owed to customer as wallet balance" },
   ]);

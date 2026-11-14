@@ -18,7 +18,7 @@ export function OfflineBanner() {
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
     return () => { window.removeEventListener("online", on); window.removeEventListener("offline", offf); };
   }, []);
-  return off ? <div role="status" className="sticky top-0 z-50 bg-brick px-4 py-2 text-center text-sm font-semibold text-cream">Network nahi hai. Hum aapke actions save kar rahe hain.</div> : null;
+  return off ? <div role="status" className="sticky top-0 z-50 bg-brick px-4 py-2 text-center text-sm font-semibold text-cream">You are offline. We are saving your actions and will sync them when you reconnect.</div> : null;
 }
 
 export function AppShell({ children, name }: { children: ReactNode; name: string }) {
@@ -27,7 +27,7 @@ export function AppShell({ children, name }: { children: ReactNode; name: string
     <div className="mx-auto min-h-screen max-w-2xl bg-cream pb-24">
       <OfflineBanner />
       <div className="px-4 pt-4 md:px-6">{children}</div>
-      <nav aria-label="App" className="fixed inset-x-0 bottom-0 z-40 border-t-2 border-ink bg-paper">
+      <nav aria-label="App" className="fixed inset-x-0 bottom-0 z-40 border-t border-ink/20 bg-paper">
         <ul className="mx-auto flex max-w-2xl">
           {TABS.map(([href, label, icon]) => {
             const on = href === "/app" ? path === "/app" : path.startsWith(href);

@@ -16,9 +16,9 @@ export default function NotFound() {
           </g>
         </svg>
         <div className="mono mt-4 text-sm tracking-widest text-brick">404</div>
-        <h1 className="display mt-1 text-5xl">Ghar mein koi nahi hai</h1>
-        <p className="mt-3 text-lg">Ye page yahan nahi mila. Shayad link purana hai, ya hum abhi tak wahan pahunche nahi.</p>
-        <Link href="/" className="btn btn-sun mt-6"><Icon name="home" size={22} tone="none" /> Ghar wapas chalo</Link>
+        <h1 className="display mt-1 text-5xl">Nobody's home</h1>
+        <p className="mt-3 text-lg">We could not find this page. The link may be out of date, or we have not reached that address yet.</p>
+        <Link href="/" className="btn btn-sun mt-6"><Icon name="home" size={22} tone="none" /> Back to home</Link>
       </div>
     </main>
   );

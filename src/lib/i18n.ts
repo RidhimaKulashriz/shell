@@ -5,7 +5,7 @@ const D = {
     "nav.how": "How it works", "nav.services": "Services", "nav.packs": "Packs", "nav.earn": "Earn with Shell", "nav.safety": "Safety", "nav.societies": "Societies",
     "nav.waitlist": "Join the waitlist", "nav.menu": "Menu", "nav.close": "Close",
     "svc.quick": "Shell Quick", "svc.quick.d": "One small task, done today", "svc.managed": "Shell Managed", "svc.managed.d": "Events, shifting, whole-home resets", "svc.earn": "Shell Earn", "svc.earn.d": "Earn with a skill you already have", "svc.routines": "Shell Routines", "svc.routines.d": "Repeating help, coming soon",
-    "foot.tag": "Get comfortable. We've got it.", "foot.sign": "Made in Delhi, with chai", "foot.product": "Product", "foot.company": "Company", "foot.legal": "Legal", "foot.status": "Status: all good",
+    "foot.tag": "Get comfortable. We've got it.", "foot.sign": "Made in Delhi, with care", "foot.product": "Product", "foot.company": "Company", "foot.legal": "Legal", "foot.status": "Status: all good",
     "cta.waitlist": "Join the waitlist", "cta.see": "See how it works", "wa.msg": "Hi Shell, I'm on",
     "cookie.title": "Cookies, the small kind", "cookie.body": "We use essential cookies to keep you logged in. With your OK we also count visits so we can fix what is confusing.", "cookie.accept": "Accept", "cookie.reject": "Reject non-essential", "cookie.custom": "Customise", "cookie.save": "Save choice", "cookie.analytics": "Analytics (anonymous visit counts)",
   },

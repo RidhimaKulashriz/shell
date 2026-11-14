@@ -6,7 +6,7 @@ import { Countdown, Ring } from "@/components/ui";
 import { readinessPct } from "@/lib/statemachine";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Ghar status", robots: { index: false } };
+export const metadata = { title: "Home status", robots: { index: false } };
 
 /** Shareable family link: Readiness Ring + countdown only. No addresses, no helper details. */
 export default async function Page({ params }: { params: Promise<{ token: string }> }) {
@@ -17,7 +17,7 @@ export default async function Page({ params }: { params: Promise<{ token: string
   const pct = readinessPct(ts.map((t) => t.status));
   return (
     <main id="main" className="grid min-h-screen place-items-center bg-cream p-6 text-center">
-      <div className="max-w-sm"><p className="hand text-3xl">{u?.name.split(" ")[0] ?? "Aapke"} ka ghar</p><h1 className="display mt-1 text-3xl">{plan.title}</h1><div className="my-6"><Ring pct={pct} size={220} label="Ghar Ready" /></div>{plan.deadlineAt && <p className="mono">Deadline <Countdown to={plan.deadlineAt} prefix="in " /></p>}<p className="mt-4 text-sm opacity-70">{ts.filter((t) => t.status === "approved").length} of {ts.length} kaam ho chuke hain.</p></div>
+      <div className="max-w-sm"><p className="hand text-3xl">{u ? `${u.name.split(" ")[0]}'s` : "Your"} home</p><h1 className="display mt-1 text-3xl">{plan.title}</h1><div className="my-6"><Ring pct={pct} size={220} label="Home Ready" /></div>{plan.deadlineAt && <p className="mono">Deadline <Countdown to={plan.deadlineAt} prefix="in " /></p>}<p className="mt-4 text-sm opacity-70">{ts.filter((t) => t.status === "approved").length} of {ts.length} tasks are complete.</p></div>
     </main>
   );
 }

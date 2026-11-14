@@ -81,9 +81,9 @@ export async function runSeed() {
     { phone: phone(11), name: "Rishi Khanna", role: "CUSTOMER" },
     { phone: phone(12), name: "Pooja Bansal", role: "CUSTOMER" },
     { phone: phone(13), name: "Harleen Kaur", role: "CUSTOMER" },
-  ].map((u) => ({ ...u, language: "hinglish", consentLocation: new Date(), consentWhatsapp: new Date() }));
+  ].map((u) => ({ ...u, language: "en", consentLocation: new Date(), consentWhatsapp: new Date() }));
   const applicants = [{ name: "Neha Joshi", status: "review" }, { name: "Arjun Malik", status: "training" }];
-  const helperUsers = [...HELPERS.map((h) => h.name), ...applicants.map((a) => a.name)].map((name, i) => ({ phone: hphone(i + 1), name, role: "HELPER", language: "hinglish" }));
+  const helperUsers = [...HELPERS.map((h) => h.name), ...applicants.map((a) => a.name)].map((name, i) => ({ phone: hphone(i + 1), name, role: "HELPER", language: "en" }));
   const insertedUsers = await db.insert(s.users).values([...userRows, ...helperUsers]).returning();
   const U = (p: string) => insertedUsers.find((u) => u.phone === p)!;
   const ananya = U(phone(1)), ops = U(phone(2)), partner = U(phone(3)), admin = U(phone(4));
@@ -145,10 +145,10 @@ export async function runSeed() {
   await db.insert(s.strikes).values({ helperId: karan.id, reason: "Shared a phone number in chat", evidence: "Chat scanner hit on task thread, message blurred", severity: 1, issuedBy: ops.id, expiresAt: new Date(now + 60 * 86400000), appealStatus: "open", appealNote: "I was giving my number for a lost item, not to book directly." });
   await db.update(s.helpers).set({ strikes: 1 }).where(eq(s.helpers.id, karan.id));
 
-  /* ---- demo plan A: Guests Aa Rahe Hain (live) ---- */
+  /* ---- demo plan A: Guests Are Coming (live) ---- */
   const deadline = new Date(now + 18 * H + 22 * 60000);
-  const [reqA] = await db.insert(s.requests).values({ customerId: ananya.id, addressId: addr.id, rawText: "Kal guests aa rahe hain, ghar saaf karwana hai, groceries chahiye, wardrobe organise karna hai, decoration karni hai.", language: "hinglish", status: "approved", deadlineAt: deadline, slaDueAt: new Date(now - 26 * H), hex8: addr.hex8, createdAt: new Date(now - 27 * H) }).returning();
-  const A = await createPlan({ customerId: ananya.id, addressId: addr.id, requestId: reqA.id, title: "Guests Aa Rahe Hain", status: "approved", managed: true, deadlineAt: deadline, items: PACKS[0].items.map((i) => ({ template: i.template, qty: i.qty, offsetHours: i.offsetHours })) });
+  const [reqA] = await db.insert(s.requests).values({ customerId: ananya.id, addressId: addr.id, rawText: "Guests are coming tomorrow. I need cleaning, groceries, wardrobe organising and decoration.", language: "en", status: "approved", deadlineAt: deadline, slaDueAt: new Date(now - 26 * H), hex8: addr.hex8, createdAt: new Date(now - 27 * H) }).returning();
+  const A = await createPlan({ customerId: ananya.id, addressId: addr.id, requestId: reqA.id, title: "Guests Are Coming", status: "approved", managed: true, deadlineAt: deadline, items: PACKS[0].items.map((i) => ({ template: i.template, qty: i.qty, offsetHours: i.offsetHours })) });
   await db.update(s.plans).set({ paidAt: new Date(now - 25 * H), approvedAt: new Date(now - 25 * H), sentAt: new Date(now - 26 * H) }).where(eq(s.plans.id, A.planId));
   const aTasks = await db.select().from(s.tasks).where(eq(s.tasks.planId, A.planId)).orderBy(s.tasks.sequence);
   const [tGro, tClean, tWard, tDeco] = aTasks;
@@ -173,10 +173,10 @@ export async function runSeed() {
   await db.insert(s.locationPings).values(route.map(([lat, lng], i) => ({ helperId: rahul.id, taskId: tClean.id, lat, lng, accuracy: 8, speed: 1.2, battery: 64, ts: new Date(now - 45 * 60000 + i * 60000) })));
   await db.insert(s.geofenceEvents).values([{ taskId: tClean.id, helperId: rahul.id, geofenceType: "society", event: "enter", ts: new Date(now - 45 * 60000) }, { taskId: tClean.id, helperId: rahul.id, geofenceType: "tower", event: "enter", ts: new Date(now - 41 * 60000) }]);
   await db.insert(s.messages).values([
-    { threadKey: `task:${tClean.id}`, senderId: rahul.userId, senderRole: "HELPER", body: "Namaste Ananya ji, main Rahul. Kitchen se shuru kar raha hoon, phir bedroom.", translatedBody: "Hello Ananya, I'm Rahul. Starting with the kitchen, then the bedroom." },
-    { threadKey: `task:${tClean.id}`, senderId: ananya.id, senderRole: "CUSTOMER", body: "Theek hai. Study table ke papers mat hilana please." },
-    { threadKey: `task:${tClean.id}`, senderId: rahul.userId, senderRole: "HELPER", body: "Bilkul, wo list mein hai. Photo bhej raha hoon.", type: "text" },
-    { threadKey: `plan:${A.planId}`, senderId: null, senderRole: "OPS", body: "Aapka plan tayyar hai. Rahul aur Isha dono aapki society mein hi hain, to timing tight rahegi." },
+    { threadKey: `task:${tClean.id}`, senderId: rahul.userId, senderRole: "HELPER", body: "Hello Ananya, this is Rahul. I will start with the kitchen, then the bedroom.", translatedBody: "Hello Ananya, I'm Rahul. Starting with the kitchen, then the bedroom." },
+    { threadKey: `task:${tClean.id}`, senderId: ananya.id, senderRole: "CUSTOMER", body: "Sounds good. Please do not move the papers on the study table." },
+    { threadKey: `task:${tClean.id}`, senderId: rahul.userId, senderRole: "HELPER", body: "Of course, it is on the do-not-touch list. Sending a photo now.", type: "text" },
+    { threadKey: `plan:${A.planId}`, senderId: null, senderRole: "OPS", body: "Your plan is ready. Rahul and Isha are both inside your society, so the timing will be tight." },
   ]);
   await db.insert(s.photos).values([
     { ownerId: rahul.userId, taskId: tClean.id, kind: "before", url: roomSvg(false, "Before: kitchen"), takenAt: new Date(now - 39 * 60000) },
@@ -198,10 +198,10 @@ export async function runSeed() {
     { ownerId: rahul.userId, taskId: hTasks[0].id, kind: "before", url: roomSvg(false, "Before"), takenAt: new Date(now - 12 * 86400000) },
     { ownerId: rahul.userId, taskId: hTasks[0].id, kind: "after", url: roomSvg(true, "After"), takenAt: new Date(now - 12 * 86400000 + 1.5 * H) },
   ]);
-  await db.insert(s.reviews).values({ taskId: hTasks[0].id, fromUserId: ananya.id, toUserId: rahul.userId, rating: 5, tags: ["on time", "careful", "thorough"], note: "Kitchen chamak gaya.", tipAmount: 5000 });
-  await db.insert(s.shellNotes).values({ fromUserId: ananya.id, toUserId: rahul.userId, taskId: hTasks[0].id, body: "Thank you Rahul, kitchen ab pehle se achha lag raha hai!" });
+  await db.insert(s.reviews).values({ taskId: hTasks[0].id, fromUserId: ananya.id, toUserId: rahul.userId, rating: 5, tags: ["on time", "careful", "thorough"], note: "The kitchen is spotless.", tipAmount: 5000 });
+  await db.insert(s.shellNotes).values({ fromUserId: ananya.id, toUserId: rahul.userId, taskId: hTasks[0].id, body: "Thank you Rahul, the kitchen looks much better!" });
   await db.insert(s.kudos).values({ fromUserId: ananya.id, toHelperId: rahul.id, taskId: hTasks[0].id });
-  const leakMsg = await db.insert(s.messages).values([{ threadKey: `task:${hTasks[0].id}`, senderId: rahul.userId, senderRole: "HELPER", body: "Next time seedha call kar lena 98••••••10", blurred: true, leakFlags: ["phone"] }]).returning();
+  const leakMsg = await db.insert(s.messages).values([{ threadKey: `task:${hTasks[0].id}`, senderId: rahul.userId, senderRole: "HELPER", body: "Next time just call me directly on 98••••••10", blurred: true, leakFlags: ["phone"] }]).returning();
   await db.insert(s.disputes).values({ taskId: tGro.id, planId: A.planId, openedBy: ananya.id, reason: "overcharge", description: "Chips and drinks line looks higher than the shelf price.", evidence: [{ kind: "text", text: "Shelf price was Rs 410" }], status: "under_review", assignedOpsId: ops.id, slaDueAt: new Date(now + 18 * H) });
   await db.insert(s.sosEvents).values({ taskId: hTasks[0].id, userId: ananya.id, kind: "silent", status: "resolved", respondedBy: ops.id, points: [{ lat: towerC.lat, lng: towerC.lng, ts: new Date(now - 11 * 86400000).toISOString() }], timeline: [{ ts: new Date(now - 11 * 86400000).toISOString(), text: "Silent SOS received (test drill)" }, { ts: new Date(now - 11 * 86400000 + 12000).toISOString(), text: "Ops acknowledged in 12 seconds" }, { ts: new Date(now - 11 * 86400000 + 90000).toISOString(), text: "Resolved: drill" }], report: "Drill. Response time 12s." });
   await db.insert(s.fraudAlerts).values([
@@ -212,19 +212,19 @@ export async function runSeed() {
   await db.insert(s.payouts).values([1, 2, 3].map((i) => ({ helperId: rahul.id, amount: 180000 + i * 20000, status: "paid", method: i === 3 ? "instant" : "weekly", fee: i === 3 ? 2000 : 0, utr: "UTR9000" + i, scheduledFor: new Date(now - i * 7 * 86400000) })));
 
   /* ---- plan C: sent, awaiting customer approval ---- */
-  const C = await createPlan({ customerId: ananya.id, addressId: addr.id, title: "Weekend kitchen aur bartan", status: "sent", items: [{ template: "clean-kitchen", qty: 1 }, { template: "utensils", qty: 2 }], deadlineAt: new Date(now + 3 * 86400000) });
+  const C = await createPlan({ customerId: ananya.id, addressId: addr.id, title: "Weekend kitchen and utensils", status: "sent", items: [{ template: "clean-kitchen", qty: 1 }, { template: "utensils", qty: 2 }], deadlineAt: new Date(now + 3 * 86400000) });
   await db.update(s.plans).set({ sentAt: new Date(now - 6 * 60000), expiresAt: new Date(now + 48 * H) }).where(eq(s.plans.id, C.planId));
 
   /* ---- requests in ops inbox ---- */
-  const txtB = "Parso mom-dad aa rahe hain, guest room set karna hai, 2 almirari organise karni hain aur bartan bhi dhone hain.";
+  const txtB = "My parents are visiting the day after tomorrow. I need the guest room set up, two wardrobes organised and the utensils washed.";
   const dB = await draftRequest(txtB, 1);
-  await db.insert(s.requests).values({ customerId: neighbours[0].id, rawText: txtB, language: "hinglish", status: "in_review", draft: dB, questions: clarifyingQuestions(dB).slice(0, 3).map((q, i) => ({ ...q, answer: q.chips[i % q.chips.length] })), slaDueAt: new Date(now + 11 * 60000), deadlineAt: new Date(now + 2 * 86400000), photos: [{ url: roomSvg(false, "guest room"), caption: "yahan se shuru", circles: [{ x: 30, y: 62, label: "Floor needs mopping" }, { x: 62, y: 28, label: "Clothes pile" }] }], hex8: latLngToHex(towerC.lat, towerC.lng, 8) });
-  const txtC = "Excel mein ek pivot table banwana hai, kal subah tak, 2 ghante lagenge shayad";
+  await db.insert(s.requests).values({ customerId: neighbours[0].id, rawText: txtB, language: "en", status: "in_review", draft: dB, questions: clarifyingQuestions(dB).slice(0, 3).map((q, i) => ({ ...q, answer: q.chips[i % q.chips.length] })), slaDueAt: new Date(now + 11 * 60000), deadlineAt: new Date(now + 2 * 86400000), photos: [{ url: roomSvg(false, "guest room"), caption: "start here", circles: [{ x: 30, y: 62, label: "Floor needs mopping" }, { x: 62, y: 28, label: "Clothes pile" }] }], hex8: latLngToHex(towerC.lat, towerC.lng, 8) });
+  const txtC = "I need a pivot table built in Excel by tomorrow morning. It should take about 2 hours.";
   const dC = await draftRequest(txtC);
-  await db.insert(s.requests).values({ customerId: neighbours[1].id, rawText: txtC, language: "hinglish", transcript: txtC, status: "in_review", draft: dC, slaDueAt: new Date(now + 14 * 60000), deadlineAt: new Date(now + 20 * H) });
-  const txtD = "Dog ko subah aur shaam walk karwana hai aur bathroom bhi saaf karwana hai";
+  await db.insert(s.requests).values({ customerId: neighbours[1].id, rawText: txtC, language: "en", transcript: txtC, status: "in_review", draft: dC, slaDueAt: new Date(now + 14 * 60000), deadlineAt: new Date(now + 20 * H) });
+  const txtD = "I need my dog walked morning and evening, and the bathroom cleaned.";
   const dD = await draftRequest(txtD);
-  await db.insert(s.requests).values({ customerId: neighbours[2].id, rawText: txtD, language: "hinglish", status: "new", draft: dD, slaDueAt: new Date(now + 15 * 60000) });
+  await db.insert(s.requests).values({ customerId: neighbours[2].id, rawText: txtD, language: "en", status: "new", draft: dD, slaDueAt: new Date(now + 15 * 60000) });
 
   /* ---- Circle ---- */
   const sat = new Date(now);
@@ -235,10 +235,10 @@ export async function runSeed() {
 
   /* ---- misc: notifications, routines, referrals, announcements, content ---- */
   await db.insert(s.notifications).values([
-    { userId: ananya.id, type: "helper_on_the_way_5", title: "helper on the way 5", body: "Isha aapke Tower C ki taraf aa rahi hai. Lagbhag 6 minute. Door OTP dikhaya gaya hai ap mein.", sentAt: new Date(now - 5 * 60000) },
-    { userId: ananya.id, type: "plan_ready", title: "plan ready", body: "Aapka plan tayyar hai. Ek baar dekh lo.", sentAt: new Date(now - 6 * 60000) },
-    { userId: ananya.id, type: "payment_success", title: "payment success", body: "Ho gaya. Ab aap relax karo.", sentAt: new Date(now - 25 * H), readAt: new Date(now - 24 * H) },
-    { userId: ananya.id, type: "circle_invite", title: "circle invite", body: "Rishi ne aapko Tower C Saturday cleaning mein bulaya hai. 4 of 6 flats joined.", sentAt: new Date(now - 2 * H) },
+    { userId: ananya.id, type: "helper_on_the_way_5", title: "helper on the way 5", body: "Isha is heading to your Tower C. About 6 minutes away. The door OTP is shown in the app.", sentAt: new Date(now - 5 * 60000) },
+    { userId: ananya.id, type: "plan_ready", title: "plan ready", body: "Your plan is ready. Please take a look.", sentAt: new Date(now - 6 * 60000) },
+    { userId: ananya.id, type: "payment_success", title: "payment success", body: "Payment received. You can relax now.", sentAt: new Date(now - 25 * H), readAt: new Date(now - 24 * H) },
+    { userId: ananya.id, type: "circle_invite", title: "circle invite", body: "Rishi invited you to the Tower C Saturday cleaning. 4 of 6 flats joined.", sentAt: new Date(now - 2 * H) },
   ]);
   await db.insert(s.routines).values({ customerId: ananya.id, templateSlug: "utensils", title: "Utensils, weekdays", frequency: "weekly", windowText: "Mon-Fri 8pm", preferredHelperId: meera(hRows), autoPay: false, nextRunAt: new Date(now + 20 * H) });
   await db.insert(s.referrals).values([{ referrerId: ananya.id, referredId: neighbours[0].id, status: "joined", rewardPaid: true }, { referrerId: ananya.id, status: "invited" }]);

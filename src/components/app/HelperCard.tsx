@@ -5,9 +5,9 @@ export type HelperCardData = { name: string; level: string; rating: number; jobs
 /** Meet Your Helper: intro, languages, good-at tags, verification badges, and a plain-language reason. */
 export function HelperCard({ h, compact = false }: { h: HelperCardData; compact?: boolean }) {
   return (
-    <div className="rounded-2xl border-2 border-ink bg-paper p-3">
+    <div className="rounded-2xl border border-ink/20 bg-paper p-3">
       <div className="flex items-center gap-3">
-        <span className="display grid h-14 w-14 place-items-center rounded-2xl border-2 border-ink bg-sand text-2xl">{h.name[0]}</span>
+        <span className="display grid h-14 w-14 place-items-center rounded-2xl border border-ink/20 bg-sand text-2xl">{h.name[0]}</span>
         <div className="min-w-0"><b className="display text-xl">{h.name.split(" ")[0]}</b><div className="mono text-xs">{h.level} · {h.rating ? h.rating.toFixed(1) : "new"} · {h.jobsDone} jobs</div><div className="mono text-xs opacity-70">{h.languages.join(", ")}</div></div>
         {h.verified !== false && <div className="ml-auto flex flex-col gap-1"><Stamp label="ID" rot={-4} /><Stamp label="College" rot={3} /></div>}
       </div>

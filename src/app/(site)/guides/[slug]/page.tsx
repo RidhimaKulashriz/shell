@@ -31,7 +31,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
           <aside className="md:sticky md:top-24 md:self-start"><div className="receipt scallop-b !text-xs"><b>In this guide</b><div className="perf" />{toc.map((t) => <a key={t.id} href={`#${t.id}`} className="block py-1 hover:underline">{t.text}</a>)}</div>
             <a className="btn btn-forest btn-sm mt-4" target="_blank" rel="noopener noreferrer" href={`https://wa.me/?text=${encodeURIComponent(p.title + " " + shareUrl)}`}>Share on WhatsApp</a></aside>
           <article className="max-w-2xl"><Markdown body={p.body} />
-            <div className="mt-12 border-t-2 border-dashed border-ink/30 pt-6"><h2 className="display text-2xl">Aur padho</h2><ul className="mt-3 space-y-2">{related.map((r) => <li key={r.slug}><Link className="link-quiet font-bold" href={`/guides/${r.slug}`}>{r.title}</Link></li>)}</ul></div></article>
+            <div className="mt-12 border-t border-dashed border-ink/30 pt-6"><h2 className="display text-2xl">Keep reading</h2><ul className="mt-3 space-y-2">{related.map((r) => <li key={r.slug}><Link className="link-quiet font-bold" href={`/guides/${r.slug}`}>{r.title}</Link></li>)}</ul></div></article>
         </div>
       </Section>
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd({ "@context": "https://schema.org", "@type": "Article", headline: p.title, author: { "@type": "Organization", name: p.author }, datePublished: p.publishedAt.toISOString(), mainEntityOfPage: shareUrl })} />

@@ -1,4 +1,5 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/db";
 import { addresses, expenses, helpers, photos, plans, reviews, societies, taskEvents, tasks, towers } from "@/db/schema";
@@ -32,5 +33,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const [soc] = addr ? await db.select().from(societies).where(eq(societies.id, addr.societyId)).limit(1) : [];
   const tw = soc ? await db.select().from(towers).where(eq(towers.societyId, soc.id)) : [];
   const myTower = tw.find((t) => t.id === addr?.towerId);
-  return <Tracker plan={{ id: plan.id, title: plan.title, deadlineAt: plan.deadlineAt?.toISOString() ?? null }} tasks={tasksV} shareToken={plan.shareToken} map={{ boundary: soc?.boundary ?? [], gates: soc?.gates ?? [], towers: tw.map((t) => ({ name: t.name, lat: t.lat, lng: t.lng })), me: addr?.lat != null ? { lat: addr.lat, lng: addr.lng!, tower: myTower?.name ?? "" } : null }} />;
+  return (
+    <>
+      <Tracker plan={{ id: plan.id, title: plan.title, deadlineAt: plan.deadlineAt?.toISOString() ?? null }} tasks={tasksV} shareToken={plan.shareToken} map={{ boundary: soc?.boundary ?? [], gates: soc?.gates ?? [], towers: tw.map((t) => ({ name: t.name, lat: t.lat, lng: t.lng })), me: addr?.lat != null ? { lat: addr.lat, lng: addr.lng!, tower: myTower?.name ?? "" } : null }} />
+      <p className="mt-6 text-sm"><Link href={`/app/orders/${plan.id}/invoice`} className="link-quiet font-bold">View GST invoice</Link></p>
+    </>
+  );
 }

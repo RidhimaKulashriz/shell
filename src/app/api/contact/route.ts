@@ -5,9 +5,9 @@ import { api, body } from "@/lib/api";
 
 const schema = z.object({
   kind: z.enum(["contact", "society", "b2b", "careers", "callback", "notify"]),
-  name: z.string().trim().min(2, "Naam likhiye").max(100),
+  name: z.string().trim().min(2, "Please enter your name").max(100),
   phone: z.string().trim().max(20).optional(),
-  email: z.string().trim().email("Email sahi nahi hai").max(120).optional().or(z.literal("")),
+  email: z.string().trim().email("Please enter a valid email").max(120).optional().or(z.literal("")),
   message: z.string().trim().max(2000).optional(),
   data: z.record(z.string(), z.unknown()).optional(),
 });

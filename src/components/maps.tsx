@@ -36,7 +36,7 @@ export function PulseMap({
   };
   const poly = boundary.map(([lat, lng]) => P({ lat, lng })).map((p) => `${p.x},${p.y}`).join(" ");
   return (
-    <svg viewBox={`0 0 ${W} ${W}`} className={`h-auto w-full rounded-[24px] ${className}`} role="img" aria-label="Society map with towers, gates and helper positions">
+    <svg viewBox={`0 0 ${W} ${W}`} className={`h-auto w-full rounded-xl ${className}`} role="img" aria-label="Society map with towers, gates and helper positions">
       <rect width={W} height={W} fill="#0B2B26" />
       <g stroke="#163832" strokeWidth="1">
         {Array.from({ length: 9 }, (_, i) => (
@@ -114,7 +114,7 @@ export function WaitlistMap({ hexes, societies, selected, onSelect, className = 
     return { x: q.x * W, y: q.y * W };
   };
   return (
-    <svg viewBox={`0 0 ${W} ${W}`} className={`h-auto w-full rounded-[24px] ${className}`} role="img" aria-label="Waitlist density map. Hexagons show how many neighbours are waiting in each area.">
+    <svg viewBox={`0 0 ${W} ${W}`} className={`h-auto w-full rounded-xl ${className}`} role="img" aria-label="Waitlist density map. Hexagons show how many neighbours are waiting in each area.">
       <rect width={W} height={W} fill="#0B2B26" />
       {data.corners.map((h) => {
         const pts = h.c.map((c) => { const p = P(c); return `${p.x},${p.y}`; }).join(" ");

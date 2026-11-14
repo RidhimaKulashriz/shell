@@ -1,7 +1,7 @@
 # SHELL: Get comfortable. We've got it.
 
 A managed personal life-assistant for Indian apartment societies, launching inside one society in Delhi.
-One message in Hindi, English or Hinglish becomes a plan, verified helpers, and one result: "ghar ready".
+One message in English or Hindi becomes a plan, verified helpers, and one finished home.
 We don't help you find people. We take responsibility for getting it done.
 
 Stack: Next.js 16 (App Router) + TypeScript strict + Tailwind 4 + PostgreSQL via Drizzle ORM. No component library: the
@@ -18,7 +18,7 @@ npm run dev                     # http://localhost:3000
 
 The first request against an empty database seeds the demo society (`src/db/seed.ts`):
 Green Meadows (6 towers, 2 gates), 12 helpers (10 active, 2 applicants), 20 task templates in 16 categories,
-7 packs, 3 guides, a live "Guests Aa Rahe Hain" plan with jobs in motion, a Circle at 4 of 6 flats, a dispute, an SOS drill,
+7 packs, 3 guides, a live "Guests Are Coming" plan with jobs in motion, a Circle at 4 of 6 flats, a dispute, an SOS drill,
 fraud alerts, and 145 demo waitlist rows (flagged `demo`; set `SHOW_DEMO_DATA=false` to hide them from public counters).
 You can also run `npx tsx src/db/seed.ts` against an empty database.
 
@@ -40,7 +40,7 @@ E2E_BASE_URL=http://localhost:3000 npx playwright test      # API-level critical
 ```
 
 Unit tests cover the pricing engine (every formula branch), Circle curve, keyword demo engine, leakage scanner (digits,
-spelled-out English/Hinglish, Devanagari numerals, UPI, handles), ETA, ledger balancing, state machine guards, dispatch scoring,
+spelled-out English or Hindi, Devanagari numerals, UPI, handles), ETA, ledger balancing, state machine guards, dispatch scoring,
 notification catalogue and quiet hours, signature verification and door OTPs. The e2e covers: waitlist signup with OTP, then request,
 plan, idempotent checkout with signature check, geofenced check-in with door OTP, checklist, approval, review, and the chat scanner.
 
@@ -63,7 +63,7 @@ Shell Receipt (components/ui.tsx, ink stamps, scalloped edge), Readiness Ring, T
 speech recognition in hi-IN, photo with drawn circles), Home Atlas, Shell Pulse map (brand SVG), Shell Circle with a discount curve,
 Skill Passport (page-flip, QR, printable resume), Meet Your Helper card, Guardian (door OTP, gate pass, geofence, SOS with cancel
 countdown, silent SOS, shake to SOS), Time Machine slider, Shell Wrapped, Rush opt-in, Expense Wallet with itemised approval and
-auto refund, Shell Notes, neighbour karma, Ops Cockpit, 404 "Ghar mein koi nahi hai", and a Konami-code easter egg.
+auto refund, Shell Notes, neighbour karma, Ops Cockpit, 404 "Nobody's home", and a Konami-code easter egg.
 
 ## Environment variables
 
@@ -92,3 +92,15 @@ Put the Razorpay webhook at `/api/webhooks/razorpay`. `/api/health` is the healt
 ## Honest status
 
 See `ASSUMPTIONS.md` for what is real, what is mocked, and what is not built yet.
+
+## Design and language
+
+The interface is written in plain, professional English. The paper-and-shell system (receipts, stamps, passport pages) is kept, but
+quiet: straight cards, thin borders, soft shadows, a serif display face (Fraunces with the soft and wonk axes switched off) and Instrument
+Serif italic for emphasis. A Hindi (Devanagari) toggle is available in the header; there is no Hinglish interface copy.
+
+## Added in the latest pass
+
+- Ops CSV exports (`/api/ops/export/{ledger,payments,jobs,helpers,customers,waitlist}`), permission-gated, phone numbers masked, every export audit-logged.
+- Wallet top-up (idempotent, balanced `wallet_liability` journal) on the customer Wallet page.
+- GST tax invoice per order (`/app/orders/[id]/invoice`), CGST/SGST split, print to PDF.

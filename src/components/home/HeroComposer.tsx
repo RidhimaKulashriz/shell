@@ -72,10 +72,10 @@ export function HeroComposer({ catalog, lang }: { catalog: CatalogTpl[]; lang: s
 
   return (
     <div className="relative">
-      <div className="rotate-[1deg] rounded-[28px] border-2 border-ink bg-paper p-4 shadow-[8px_8px_0_var(--color-ink)] md:p-5">
+      <div className="rotate-[1deg] rounded-2xl border border-ink/20 bg-paper p-4 shadow-[0_22px_44px_-30px_rgba(5,31,32,0.6)] md:p-5">
         <div role="tablist" aria-label="Composer demo" className="mb-3 flex gap-2">
           {(["text", "voice", "photo"] as const).map((t) => (
-            <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`rounded-full border-2 border-ink px-4 py-1.5 text-sm font-bold capitalize ${tab === t ? "bg-forest text-cream" : "bg-cream"}`}>
+            <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`rounded-full border border-ink/20 px-4 py-1.5 text-sm font-bold capitalize ${tab === t ? "bg-forest text-cream" : "bg-cream"}`}>
               {t === "text" ? "Text" : t === "voice" ? "Voice" : "Photo"}
             </button>
           ))}
@@ -84,12 +84,12 @@ export function HeroComposer({ catalog, lang }: { catalog: CatalogTpl[]; lang: s
 
         {tab === "text" && (
           <div role="tabpanel">
-            <label htmlFor="demo-text" className="sr-only">Kya karwana hai? Hindi, English, Hinglish, sab chalega.</label>
+            <label htmlFor="demo-text" className="sr-only">What do you need done? Write it in your own words.</label>
             <textarea
               id="demo-text"
               className="field min-h-[96px] resize-none text-[15px]"
               value={text}
-              placeholder="Kya karwana hai? Hindi, English, Hinglish, sab chalega."
+              placeholder="What do you need done? Write it in your own words."
               onFocus={() => typing && setTyping(false)}
               onChange={(e) => {
                 setTyping(false);
@@ -97,36 +97,36 @@ export function HeroComposer({ catalog, lang }: { catalog: CatalogTpl[]; lang: s
               }}
               onBlur={() => text.length > 10 && track("composer_demo_typed", { len: text.length })}
             />
-            {r.banned.length > 0 && <p className="mt-2 rounded-xl bg-sand/60 p-2 text-sm">Ye hum nahi karte ({r.banned.join(", ")}). Massage, makeup aur personal care launch par band hain.</p>}
+            {r.banned.length > 0 && <p className="mt-2 rounded-xl bg-sand/60 p-2 text-sm">We do not offer this ({r.banned.join(", ")}). Massage, makeup and personal care are not offered at launch.</p>}
             {noMatch && (
-              <div className="mt-3 rounded-2xl border-2 border-dashed border-ink/40 p-3 text-sm">
-                Ye abhi humare list mein nahi, par likh ke bhejo, hum dekhte hain.
-                <Link href={`/waitlist?text=${encodeURIComponent(text)}`} className="btn btn-sun btn-sm ml-2 mt-2">Waitlist mein likho</Link>
+              <div className="mt-3 rounded-2xl border border-dashed border-ink/40 p-3 text-sm">
+                That is not on our list yet. Send it to us and we will take a look.
+                <Link href={`/waitlist?text=${encodeURIComponent(text)}`} className="btn btn-sun btn-sm ml-2 mt-2">Join the waitlist</Link>
               </div>
             )}
             {q && (
               <div className="mt-4 grid items-start gap-4 sm:grid-cols-[1fr_auto]">
-                <Receipt key={q.lines.map((l) => l.slug).join()} title="Aapka plan" meta="Sample estimate" lines={lines} fees={[{ name: "Platform fee", price: inr(q.platformFee) }, ...(q.coordinationFee ? [{ name: "Coordination (3+ tasks)", price: inr(q.coordinationFee) }] : [])]} total={<span className="flex items-baseline gap-1"><Meter value={q.range[0] / 100} prefix="₹" /> <span className="text-xs opacity-60">to</span> <Meter value={q.range[1] / 100} prefix="₹" /></span>} totalLabel="ESTIMATE" footer={`About ${minutesToText(q.minutes)} of work${finish ? `. Done by ~${finish} if started now.` : "."} Shell Guarantee included.`} animate={!prefersReduced()} />
-                <div className="hidden justify-self-center sm:block"><Ring pct={ready} size={118} label="Ghar Ready" /></div>
+                <Receipt key={q.lines.map((l) => l.slug).join()} title="Your plan" meta="Sample estimate" lines={lines} fees={[{ name: "Platform fee", price: inr(q.platformFee) }, ...(q.coordinationFee ? [{ name: "Coordination (3+ tasks)", price: inr(q.coordinationFee) }] : [])]} total={<span className="flex items-baseline gap-1"><Meter value={q.range[0] / 100} prefix="₹" /> <span className="text-xs opacity-60">to</span> <Meter value={q.range[1] / 100} prefix="₹" /></span>} totalLabel="ESTIMATE" footer={`About ${minutesToText(q.minutes)} of work${finish ? `. Done by ~${finish} if started now.` : "."} Shell Guarantee included.`} animate={!prefersReduced()} />
+                <div className="hidden justify-self-center sm:block"><Ring pct={ready} size={118} label="Home Ready" /></div>
               </div>
             )}
             <p className="mt-3 text-sm">
-              <Link href={`/waitlist?text=${encodeURIComponent(text)}`} className="link-quiet font-bold text-euc" data-cta="hero_try">Isse apne ghar ke liye try karo</Link>
+              <Link href={`/waitlist?text=${encodeURIComponent(text)}`} className="link-quiet font-bold text-euc" data-cta="hero_try">Try this for your home</Link>
             </p>
           </div>
         )}
 
         {tab === "voice" && (
           <div role="tabpanel" className="space-y-3">
-            <div className="flex items-center gap-4 rounded-2xl bg-cream p-4"><span className="grid h-14 w-14 shrink-0 place-items-center rounded-full border-2 border-ink bg-sun"><svg width="26" height="26" viewBox="0 0 48 48" fill="none" stroke="#0e1a17" strokeWidth="3" strokeLinecap="round"><path d="M18 12a6 6 0 0 1 12 0V24a6 6 0 0 1-12 0Z M10 22a14 14 0 0 0 28 0 M24 36V44"/></svg></span><Bars /></div>
-            <div className="rounded-2xl border-2 border-dashed border-ink/40 p-3 text-sm"><span className="stamp mb-2 text-[10px]">Demo transcript</span><p className="mt-1 italic">&ldquo;{DEMO_SENTENCE}&rdquo;</p></div>
-            <p className="text-sm opacity-75">In the app: hold to record up to 60 seconds in Hindi, English or Hinglish, then edit the transcript before sending.</p>
+            <div className="flex items-center gap-4 rounded-2xl bg-cream p-4"><span className="grid h-14 w-14 shrink-0 place-items-center rounded-full border border-ink/20 bg-sun"><svg width="26" height="26" viewBox="0 0 48 48" fill="none" stroke="#0e1a17" strokeWidth="3" strokeLinecap="round"><path d="M18 12a6 6 0 0 1 12 0V24a6 6 0 0 1-12 0Z M10 22a14 14 0 0 0 28 0 M24 36V44"/></svg></span><Bars /></div>
+            <div className="rounded-2xl border border-dashed border-ink/40 p-3 text-sm"><span className="stamp mb-2 text-[10px]">Demo transcript</span><p className="mt-1 italic">&ldquo;{DEMO_SENTENCE}&rdquo;</p></div>
+            <p className="text-sm opacity-75">In the app: hold to record up to 60 seconds in English or Hindi, then edit the transcript before sending.</p>
           </div>
         )}
 
         {tab === "photo" && (
           <div role="tabpanel" className="space-y-3">
-            <div className="relative overflow-hidden rounded-2xl border-2 border-ink bg-[#ddd5bd]">
+            <div className="relative overflow-hidden rounded-2xl border border-ink/20 bg-[#ddd5bd]">
               <svg viewBox="0 0 400 260" className="w-full" aria-label="Sample photo of a messy room">
                 <rect width="400" height="260" fill="#ddd5bd" /><rect y="215" width="400" height="45" fill="#b9ae93" />
                 <rect x="24" y="30" width="110" height="120" fill="#daf1de" stroke="#0e1a17" strokeWidth="3" /><path d="M24 90H134M79 30V150" stroke="#0e1a17" strokeWidth="2" />

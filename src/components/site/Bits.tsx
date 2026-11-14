@@ -31,7 +31,7 @@ export function Section({ children, tone = "cream", className = "", id }: { chil
 export function Faq({ items, schema = true }: { items: { q: string; a: string }[]; schema?: boolean }) {
   return (
     <div>
-      <div className="divide-y-2 divide-dashed divide-ink/25 rounded-[24px] border-2 border-ink bg-paper px-5">
+      <div className="divide-y-2 divide-dashed divide-ink/25 rounded-xl border border-ink/20 bg-paper px-5">
         {items.map((f, i) => (
           <details key={f.q} className="group py-4" open={i === 0 && items.length < 4}>
             <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-bold md:text-lg">

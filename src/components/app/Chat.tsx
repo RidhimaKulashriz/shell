@@ -23,15 +23,15 @@ export function Chat({ threadKey, me = "CUSTOMER", title = "Chat" }: { threadKey
     await load();
   };
   return (
-    <section aria-label={title} className="rounded-2xl border-2 border-ink bg-paper">
-      <div className="flex items-center justify-between border-b-2 border-dashed border-ink/30 px-3 py-2"><b className="display text-lg">{title}</b><label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={tr} onChange={(e) => setTr(e.target.checked)} /> Translate</label></div>
+    <section aria-label={title} className="rounded-2xl border border-ink/20 bg-paper">
+      <div className="flex items-center justify-between border-b border-dashed border-ink/30 px-3 py-2"><b className="display text-lg">{title}</b><label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={tr} onChange={(e) => setTr(e.target.checked)} /> Translate</label></div>
       <div className="max-h-72 space-y-2 overflow-y-auto p-3" aria-live="polite">
-        {msgs.length === 0 && <p className="hand text-center text-xl opacity-60">Abhi kuch nahi. Peaceful hai, enjoy karo.</p>}
+        {msgs.length === 0 && <p className="hand text-center text-xl opacity-60">Nothing here yet.</p>}
         {msgs.map((m) => { const mine = m.senderRole === me; return <div key={m.id} className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${mine ? "ml-auto rounded-br-sm bg-forest text-cream" : "rounded-bl-sm bg-cream"}`}><span className="mono block text-[10px] uppercase opacity-60">{m.senderRole === "OPS" ? "Shell" : m.senderRole.toLowerCase()}</span><span className={m.blurred ? "blur-leak" : ""} title={m.blurred ? "Hidden: contact details are not allowed in chat" : undefined}>{tr && m.translatedBody ? m.translatedBody : m.body}</span></div>; })}
         <div ref={end} />
       </div>
       {warn && <p role="alert" className="mx-3 rounded-xl bg-sand p-2 text-xs font-semibold">{warn}</p>}
-      <form onSubmit={submit} className="flex gap-2 p-3"><input className="field" value={text} onChange={(e) => setText(e.target.value)} placeholder="Message likho" aria-label="Message" maxLength={1000} /><button className="btn btn-forest btn-sm">Bhejo</button></form>
+      <form onSubmit={submit} className="flex gap-2 p-3"><input className="field" value={text} onChange={(e) => setText(e.target.value)} placeholder="Write a message" aria-label="Message" maxLength={1000} /><button className="btn btn-forest btn-sm">Bhejo</button></form>
     </section>
   );
 }

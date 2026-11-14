@@ -9,7 +9,7 @@ import { SITE_URL } from "@/lib/seo";
 import { render } from "@/lib/notify";
 
 const schema = z.object({
-  name: z.string().trim().min(2, "Naam likhiye").max(80),
+  name: z.string().trim().min(2, "Please enter your name").max(80),
   phone: z.string(),
   otp: z.string().regex(/^\d{6}$/, "6 digit OTP"),
   role: z.enum(["help", "earn", "both"]),

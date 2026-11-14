@@ -1,4 +1,4 @@
-// Client-safe keyword engine: Hindi, English and Hinglish keywords mapped to the task catalog.
+// Client-safe keyword engine: English and Hindi keywords mapped to the task catalog.
 // Used by the home-page composer demo (no API cost) and as the offline fallback of the plan engine.
 
 export type KeywordItem = { slug: string; qty: number; size: "small" | "medium" | "large"; matched: string[]; pos: number };
@@ -92,4 +92,4 @@ export function matchKeywords(input: string): KeywordResult {
   return { items, banned: [...new Set(banned)] };
 }
 
-export const DEMO_SENTENCE = "Kal guests aa rahe hain, ghar saaf karwana hai, groceries chahiye, wardrobe organise karna hai, decoration karni hai.";
+export const DEMO_SENTENCE = "Guests are coming tomorrow. I need cleaning, groceries, wardrobe organising and decoration.";

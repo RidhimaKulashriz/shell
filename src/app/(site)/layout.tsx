@@ -33,7 +33,7 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
       <AnnouncementBar text={annText} />
       <Header lang={lang} t={t} />
       <main id="main">{children}</main>
-      <footer className="tide-band mt-0 border-t-2 border-ink">
+      <footer className="tide-band mt-0 border-t border-ink/20">
         <div className="mx-auto grid max-w-7xl gap-10 px-5 py-14 md:px-8 lg:grid-cols-[2.4fr_1fr_1fr_1.5fr]">
           <div>
             <Wordmark size={36} className="text-cream" />
@@ -44,7 +44,7 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
               <p>WhatsApp +{wa}</p>
               <p><Link className="underline" href="/legal/grievance-officer">Grievance officer</Link></p>
             </div>
-            <Link href="/status" className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-sage px-3 py-1 text-sm"><span className="h-2.5 w-2.5 rounded-full bg-sage" />{t["foot.status"]}</Link>
+            <Link href="/status" className="mt-5 inline-flex items-center gap-2 rounded-full border border-sage px-3 py-1 text-sm"><span className="h-2.5 w-2.5 rounded-full bg-sage" />{t["foot.status"]}</Link>
           </div>
           {col(t["foot.product"], [["/how-it-works", "How it works"], ["/services", "Services"], ["/packs", "Packs"], ["/pricing", "Pricing and estimator"], ["/safety", "Safety and trust"], ["/earn", "Shell Earn"], ["/waitlist-map", "Live waitlist map"]])}
           {col(t["foot.company"], [["/about", "About"], ["/careers", "Careers"], ["/contact", "Contact"], ["/press", "Press kit"], ["/guides", "Guides"], ["/help", "Help centre"], ["/societies", "For societies"], ["/hostels-offices", "Hostels and offices"]])}

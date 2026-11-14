@@ -32,10 +32,10 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
         <PackCustomise slug={p.slug} name={p.nameEn} items={p.items} catalog={catalog} config={config} />
       </Section>
       <Section tone="dark">
-        <h2 className="display text-4xl md:text-5xl">Kaise chalta hai</h2>
+        <h2 className="display text-4xl md:text-5xl">How the pack runs</h2>
         <ol className="mt-10 grid gap-4 md:grid-cols-4">
           {sorted.map((it, i) => (
-            <li key={it.label} className="relative rounded-2xl border-2 border-sage/60 p-4" style={{ transform: `rotate(${[-1, 0.8, -0.5, 1][i % 4]}deg)` }}>
+            <li key={it.label} className="relative rounded-2xl border border-sage/60 p-4" style={{ transform: `rotate(${[-1, 0.8, -0.5, 1][i % 4]}deg)` }}>
               <span className="mono text-sm text-sand">{it.offsetHours === 0 ? "T (the day)" : `T ${it.offsetHours < 0 ? "minus" : "plus"} ${Math.abs(it.offsetHours)} hours`}</span>
               <p className="display mt-1 text-2xl">{it.label}</p>
             </li>

@@ -6,7 +6,7 @@ export const metadata = meta({ title: "About Shell", description: "Why Shell exi
 export default function Page() {
   return (
     <>
-      <PageHero eyebrow="humari kahani" title="Kaam karwana" em="kaam nahi hona chahiye." sub="Shell started with a simple annoyance: getting someone to do a small thing at home should not take four apps and an evening." />
+      <PageHero eyebrow="our story" title="Getting things done" em="should not be a job." sub="Shell started with a simple annoyance: getting someone to do a small thing at home should not take four apps and an evening." />
       <Section tone="paper">
         <div className="mx-auto max-w-3xl space-y-5 text-lg">
           <p>We are not building a marketplace where you hunt for workers. We are building a service that takes responsibility for getting it done. That is a different promise, and it needs a different kind of company: smaller, closer, more careful.</p>
@@ -15,7 +15,7 @@ export default function Page() {
           <ul className="space-y-2">{["Comfort: step back, get your time back.", "Connection: someone capable is right around the corner.", "Opportunity: anyone with a useful skill can earn."].map((x) => <li key={x} className="flex gap-3"><span className="text-euc">+</span>{x}</li>)}</ul>
           <h2 className="display pt-4 text-3xl">How we make money, plainly</h2>
           <p>A commission on each job (20 to 28 percent, depending on helper level). A coordination fee on plans with three or more tasks. A platform fee with a floor. Later: a Plus subscription, and plans for societies, hostels and offices. Tips go entirely to helpers.</p>
-          <div className="note rotate-1"><p className="hand text-3xl">&ldquo;Hum chahte hain ki aap ghar aao aur sab ready ho.&rdquo;</p><p className="mt-2 text-sm">A note from the founders</p></div>
+          <div className="note rotate-1"><p className="hand text-3xl">&ldquo;We want you to walk in and find everything ready.&rdquo;</p><p className="mt-2 text-sm">A note from the founders</p></div>
         </div>
       </Section>
       <Section tone="dark">

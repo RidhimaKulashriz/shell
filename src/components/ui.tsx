@@ -173,8 +173,8 @@ export function Meter({ value, prefix = "", suffix = "", duration = 900, classNa
   );
 }
 
-/** Readiness Ring: "Ghar Ready %" */
-export function Ring({ pct, size = 160, label = "Ghar Ready", sub, tone = "forest" }: { pct: number; size?: number; label?: string; sub?: string; tone?: "forest" | "cream" }) {
+/** Readiness Ring: "Home ready %" */
+export function Ring({ pct, size = 160, label = "Home Ready", sub, tone = "forest" }: { pct: number; size?: number; label?: string; sub?: string; tone?: "forest" | "cream" }) {
   const [p, setP] = useState(0);
   useEffect(() => {
     const id = setTimeout(() => setP(pct), 80);

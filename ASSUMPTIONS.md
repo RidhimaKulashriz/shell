@@ -10,8 +10,9 @@ Decided without asking, as the brief allows. Safer and simpler options were chos
 - **No Redis/BullMQ.** Offer expiry, re-offer and no-show rules are evaluated on read and on action. A queue is the next step.
 - **Map provider is a custom brand-palette SVG** (works offline, no tile key, fast on cheap Android). The `PulseMap` props are the MapProvider
   seam for MapLibre GL with MapTiler/Stadia tiles. Google Routes is not called: travel time is estimated from distance in `lib/geo.ts`.
-- **Language:** English, Hindi and Hinglish are stored per user and in a cookie. Hindi strings cover the global shell, key headings, FAQs,
-  notification catalogue and category intros; the rest of the interface is Hinglish by design. hreflang uses `?lang=` URLs.
+- **Language:** the interface is written in plain English. A Hindi (Devanagari) toggle is stored per user and in a cookie and covers the global shell,
+  key headings, FAQs, notification catalogue and category intros. The keyword planner still understands Hindi and romanised Hindi input.
+  hreflang uses `?lang=` URLs.
 - **Auth** is phone OTP with httpOnly session cookies (hashed in DB) and role checks in server components and API wrappers.
   Staff two-factor is not built. Only CUSTOMER and HELPER can self-register; staff accounts are seeded.
 - **Photos** are compressed in the browser and stored as data URLs. Swap the `photos.url` writer for signed S3 uploads.
@@ -33,7 +34,7 @@ audit log (including staff access to location data), dispatch scoring with a pla
 DPDP export and 7-day delete request, consent, privacy-safe waitlist hex map (hexes under 3 people hidden).
 
 ## Not built yet (honest list)
-- Split payment with flatmates, Wallet top-up, GST invoice PDFs, CSV export buttons, Razorpay reconciliation against the live API
+- Split payment with flatmates, Razorpay reconciliation against the live API (wallet top-up, CSV exports and a printable GST invoice are built)
 - Voice notes in chat, real-time translation (stored `translatedBody` is displayed when present), WebSocket channels (SSE is used for tracking)
 - Shell Rush pricing flow and 90-minute countdown beyond the helper opt-in and the 1.5x multiplier
 - Ghost Jobs lockbox OTP flow beyond the key-handling preference, receipt OCR, helper timetable image import

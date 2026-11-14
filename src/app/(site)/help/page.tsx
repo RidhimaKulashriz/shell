@@ -12,7 +12,7 @@ export default async function Page() {
   const items = rows.filter((r) => r.scope.startsWith("help") || r.scope === "home").map((r) => ({ id: r.id, scope: r.scope.startsWith("help-helper") ? "helper" : "customer", q: r.q, a: r.a, qHi: r.qHi ?? "", aHi: r.aHi ?? "" }));
   return (
     <>
-      <PageHero eyebrow="madad" title="Kuch" em="poochna hai?" />
+      <PageHero eyebrow="help" title="Have a" em="question?" />
       <Section tone="paper"><HelpSearch items={items} /></Section>
     </>
   );

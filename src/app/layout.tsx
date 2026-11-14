@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: { default: "Shell | Get comfortable. We've got it.", template: "%s | Shell" },
-  description: "Shell is a managed life-assistant for Indian apartment societies. Write one message in Hindi, English or Hinglish. We plan it, send verified helpers and stay till it is done.",
+  description: "Shell is a managed life-assistant for Indian apartment societies. Write one message in English or Hindi. We plan it, send verified helpers and stay till it is done.",
   applicationName: "Shell",
   manifest: "/manifest.webmanifest",
   icons: { icon: "/icon.svg" },
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { themeColor: "#0B2B26", width: "device-width", initialScale: 1 };
 
 const FONTS =
-  "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,100..900,0..100,0..1&family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,400..800&family=DM+Mono:wght@400;500&family=Caveat:wght@500..700&family=Noto+Sans+Devanagari:wght@400..700&display=swap";
+  "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,100..900,0..100,0..1&family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,400..800&family=DM+Mono:wght@400;500&family=Noto+Sans+Devanagari:wght@400..700&display=swap";
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   await ensureSeed();
