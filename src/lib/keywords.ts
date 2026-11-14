@@ -1,54 +1,95 @@
-// Client-side keyword engine for the home-page composer demo.
-// Hindi, English and Hinglish keywords map to catalog slugs. No API cost.
+// Client-safe keyword engine: Hindi, English and Hinglish keywords mapped to the task catalog.
+// Used by the home-page composer demo (no API cost) and as the offline fallback of the plan engine.
 
-import { BANNED_KEYWORDS } from "./catalog";
+export type KeywordItem = { slug: string; qty: number; size: "small" | "medium" | "large"; matched: string[]; pos: number };
+export type KeywordResult = { items: KeywordItem[]; banned: string[] };
 
-export type Match = { slug: string; label: string; hours: number; min: number; max: number };
+const TERMS: Record<string, string[]> = {
+  "clean-full-home": ["saaf", "safai", "safayi", "cleaning", "clean", "cleaner", "jhaadu", "jhadu", "pocha", "mop", "sweep", "sweeping", "dusting", "सफाई", "साफ", "झाड़ू", "पोछा"],
+  "clean-kitchen": ["kitchen", "rasoi", "रसोई", "किचन"],
+  "clean-bathroom": ["bathroom", "washroom", "toilet", "bathrooms", "बाथरूम"],
+  utensils: ["bartan", "bartaan", "utensils", "utensil", "dishes", "dishwashing", "बर्तन"],
+  groceries: ["groceries", "grocery", "sabzi", "sabji", "kirana", "doodh", "saman", "ration", "fruits", "vegetables", "सब्ज़ी", "सब्जी", "किराना", "राशन"],
+  "wardrobe-organise": ["wardrobe", "almirari", "almari", "alamari", "cupboard", "closet", "organise", "organize", "अलमारी", "वार्डरोब"],
+  decoration: ["decoration", "decorate", "decorations", "balloon", "balloons", "sajawat", "sajaana", "sajana", "party", "streamers", "सजावट", "डेकोरेशन", "गुब्बारे"],
+  "event-help": ["event", "function", "waiters", "serving", "mehfil", "shaadi", "catering"],
+  "parcel-pickup": ["parcel", "courier", "amazon", "delivery", "पार्सल", "कुरियर"],
+  errand: ["errand", "errands", "chemist", "dawai", "dawa", "medicine", "pharmacy", "laundry", "dhobi", "pickup", "दवाई", "धोबी"],
+  "excel-help": ["excel", "spreadsheet", "sheet", "sheets", "data", "pivot", "एक्सेल"],
+  tutoring: ["padhai", "tuition", "tutor", "tutoring", "explain", "samjhana", "samjha", "padhana", "पढ़ाई", "ट्यूशन"],
+  "pet-walk": ["kutta", "kutte", "dog", "pet", "puppy", "कुत्ता"],
+  "moving-help": ["shifting", "shift", "moving", "packing", "movers", "शिफ्टिंग", "पैकिंग"],
+  "small-repairs": ["plumber", "electrician", "repair", "repairs", "tap", "leak", "mistri", "carpenter", "मिस्त्री"],
+  queueing: ["queue", "line", "lineup", "bank", "aadhaar", "कतार", "लाइन"],
+  "sports-partner": ["cricket", "badminton", "football", "tennis", "sports", "khelna", "खेलना"],
+  "gaming-partner": ["gaming", "game", "games", "ps5", "valorant", "bgmi", "chess"],
+};
+const MULTI: Record<string, string[]> = {
+  "pet-walk": ["dog walk", "walk the dog", "kutte ko ghumana"],
+  "parcel-pickup": ["delivery pickup"],
+  queueing: ["line mein", "line me khade"],
+};
+const BANNED = ["massage", "makeup", "make-up", "make up", "facial", "waxing", "spa", "bridal", "personal care", "मसाज", "मेकअप"];
+const BANNED_MULTI = ["homework kar do", "assignment kar do", "homework karwana", "do my homework", "write my assignment"];
 
-type Rule = { slug: string; label: string; hours: number; min: number; max: number; words: string[] };
+const GENERIC_CLEAN = "clean-full-home";
+const SIZE_BIG = ["bada", "badi", "bade", "large", "big", "3bhk", "4bhk", "3 bhk", "4 bhk", "huge", "बड़ा"];
+const SIZE_SMALL = ["chhota", "chhoti", "small", "1bhk", "1 bhk", "studio", "छोटा"];
 
-const RULES: Rule[] = [
-  { slug: "house-cleaning", label: "Ghar ki safai", hours: 3, min: 450, max: 900, words: ["saaf", "safai", "clean", "cleaning", "jhaadu", "jhadu", "pocha", "mop", "dusting", "सफाई", "साफ"] },
-  { slug: "utensils", label: "Bartan", hours: 1, min: 150, max: 300, words: ["bartan", "utensil", "dishes", "बर्तन"] },
-  { slug: "groceries", label: "Groceries", hours: 1.5, min: 180, max: 350, words: ["grocer", "sabzi", "sabji", "kirana", "vegetable", "milk", "doodh", "ration", "सब्जी"] },
-  { slug: "wardrobe-organising", label: "Wardrobe organise", hours: 2, min: 500, max: 1000, words: ["wardrobe", "almirari", "almari", "cupboard", "closet", "kapde", "अलमारी"] },
-  { slug: "decoration", label: "Decoration", hours: 2, min: 600, max: 1500, words: ["decoration", "decorate", "balloon", "party", "birthday", "sajaavat", "sajawat", "सजावट"] },
-  { slug: "parcel-pickup-drop", label: "Parcel pickup", hours: 0.75, min: 99, max: 250, words: ["parcel", "courier", "package", "amazon"] },
-  { slug: "excel-data-help", label: "Excel help", hours: 2, min: 400, max: 1000, words: ["excel", "spreadsheet", "pivot", "formula"] },
-  { slug: "tutoring-explaining", label: "Padhai samjhana", hours: 1, min: 250, max: 600, words: ["padhai", "tutor", "teach", "explain", "maths", "exam", "पढ़ाई"] },
-  { slug: "pet-walking", label: "Pet walking", hours: 0.5, min: 99, max: 200, words: ["dog", "kutta", "kutte", "pet walk", "walk the"] },
-  { slug: "event-help", label: "Event help", hours: 3, min: 700, max: 1800, words: ["guests", "guest", "mehmaan", "mehman", "function", "pooja", "aa rahe"] },
-  { slug: "moving-shifting-help", label: "Shifting help", hours: 5, min: 1500, max: 4000, words: ["shifting", "moving", "packing", "unpack", "shift"] },
-  { slug: "errands", label: "Chhote kaam", hours: 1, min: 120, max: 350, words: ["errand", "chemist", "stationery", "tailor"] },
-  { slug: "queueing", label: "Line mein lagna", hours: 2, min: 150, max: 500, words: ["queue", "token", "line mein"] },
-];
+const tokenize = (s: string): string[] => Array.from(s.toLowerCase().match(/[\p{L}\p{M}\p{N}-]+/gu) ?? []);
 
-export type EngineResult =
-  | { kind: "match"; items: Match[]; totalMin: number; totalMax: number; hours: number }
-  | { kind: "banned"; word: string }
-  | { kind: "none" };
-
-export function normalise(text: string): string {
-  return text.toLowerCase().replace(/[.,!?;:]/g, " ").replace(/\s+/g, " ").trim();
+function termHit(tokens: string[], term: string) {
+  return tokens.findIndex((t) => t === term || (term.length >= 5 && t.startsWith(term)));
 }
 
-export function runKeywordEngine(text: string): EngineResult {
-  const t = normalise(text);
-  if (!t) return { kind: "none" };
-  const banned = BANNED_KEYWORDS.find((w) => t.includes(w));
-  if (banned) return { kind: "banned", word: banned };
-  const items: Match[] = [];
-  for (const r of RULES) {
-    if (r.words.some((w) => t.includes(w))) {
-      items.push({ slug: r.slug, label: r.label, hours: r.hours, min: r.min, max: r.max });
+export function matchKeywords(input: string): KeywordResult {
+  const text = input.toLowerCase();
+  const tokens = tokenize(text);
+  const hits = new Map<string, { pos: number; matched: string[] }>();
+  for (const [slug, terms] of Object.entries(TERMS)) {
+    for (const term of terms) {
+      const i = termHit(tokens, term);
+      if (i >= 0) {
+        const cur = hits.get(slug);
+        if (cur) {
+          cur.pos = Math.min(cur.pos, i);
+          cur.matched.push(term);
+        } else hits.set(slug, { pos: i, matched: [term] });
+      }
     }
   }
-  if (items.length === 0) return { kind: "none" };
-  const totalMin = items.reduce((a, b) => a + b.min, 0);
-  const totalMax = items.reduce((a, b) => a + b.max, 0);
-  const hours = items.reduce((a, b) => a + b.hours, 0);
-  return { kind: "match", items, totalMin, totalMax, hours };
+  for (const [slug, terms] of Object.entries(MULTI))
+    for (const term of terms) {
+      const idx = text.indexOf(term);
+      if (idx >= 0) hits.set(slug, { pos: tokens.length ? Math.max(0, text.slice(0, idx).split(/\s+/).length - 1) : 0, matched: [term] });
+    }
+
+  // "organise" alone is too generic: it only counts for wardrobe when a storage word is present.
+  const w = hits.get("wardrobe-organise");
+  if (w && w.matched.every((m) => m === "organise" || m === "organize")) hits.delete("wardrobe-organise");
+  // Specific rooms beat the generic whole-home clean.
+  if ((hits.has("clean-kitchen") || hits.has("clean-bathroom")) && hits.has(GENERIC_CLEAN) && hits.get(GENERIC_CLEAN)!.matched.every((m) => ["saaf", "safai", "cleaning", "clean", "safayi"].includes(m)) && !/\b(ghar|home|flat|house|poora|pura)\b/.test(text)) hits.delete(GENERIC_CLEAN);
+  // A bare "party" is decoration only when no event-help intent is present.
+  if (hits.has("event-help") && hits.has("decoration") && hits.get("decoration")!.matched.length === 1 && hits.get("decoration")!.matched[0] === "party") hits.delete("decoration");
+
+  const size: "small" | "medium" | "large" = SIZE_BIG.some((s) => text.includes(s)) ? "large" : SIZE_SMALL.some((s) => text.includes(s)) ? "small" : "medium";
+  const qtyOf = (re: RegExp) => {
+    const m = text.match(re);
+    return m ? Math.min(20, Math.max(1, Number(m[1]))) : 1;
+  };
+  const items: KeywordItem[] = [...hits.entries()]
+    .map(([slug, h]) => {
+      let qty = 1;
+      if (slug === "event-help") qty = qtyOf(/(\d+)\s*(?:people|log|waiters|helpers|persons)/);
+      if (["excel-help", "tutoring", "queueing", "sports-partner", "gaming-partner", "moving-help"].includes(slug)) qty = qtyOf(/(\d+)\s*(?:hours?|hrs?|ghante|ghanta|घंटे)/);
+      if (slug === "parcel-pickup") qty = qtyOf(/(\d+)\s*(?:parcels?|couriers?)/);
+      if (slug === "pet-walk") qty = qtyOf(/(\d+)\s*(?:walks?|dogs?)/);
+      return { slug, qty, size, matched: h.matched, pos: h.pos };
+    })
+    .sort((a, b) => a.pos - b.pos);
+
+  const banned = [...BANNED.filter((b) => tokens.includes(b) || text.includes(b + " ") || text.endsWith(b)), ...BANNED_MULTI.filter((b) => text.includes(b))];
+  return { items, banned: [...new Set(banned)] };
 }
 
-export const DEMO_SENTENCE =
-  "Kal guests aa rahe hain, ghar saaf karwana hai, groceries chahiye, wardrobe organise karna hai, decoration karni hai.";
+export const DEMO_SENTENCE = "Kal guests aa rahe hain, ghar saaf karwana hai, groceries chahiye, wardrobe organise karna hai, decoration karni hai.";

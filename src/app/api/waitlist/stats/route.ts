@@ -1,9 +1,8 @@
-import { NextResponse } from "next/server";
-import { getSocieties, getStats } from "@/lib/data";
+import { api } from "@/lib/api";
+import { publicCounters } from "@/lib/data";
+import { societyList } from "@/lib/site-data";
 
-export const dynamic = "force-dynamic";
-
-export async function GET() {
-  const [stats, societies] = await Promise.all([getStats(), getSocieties()]);
-  return NextResponse.json({ stats, societies });
-}
+export const GET = api(async () => {
+  const [counters, societies] = await Promise.all([publicCounters(), societyList()]);
+  return { ...counters, societies: societies.map((s) => ({ slug: s.slug, name: s.name, count: s.count, target: s.target, remaining: Math.max(0, s.target - s.count) })) };
+});

@@ -1,52 +1,34 @@
 "use client";
-
-import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Meter, Receipt, Stamp } from "./ui";
-import { estimate, rupees } from "@/lib/pricing";
-import type { PackTask } from "@/lib/catalog";
+import Link from "next/link";
+import { Receipt } from "@/components/ui";
+import { quote, type Size } from "@/lib/pricing";
+import { inr, minutesToText } from "@/lib/format";
+import type { CatalogTpl } from "@/components/home/HeroComposer";
+import { Meter } from "@/components/ui";
+import type { PricingConfig } from "@/lib/pricing";
 
-export function PackCustomise({ title, tasks, rates }: { title: string; tasks: PackTask[]; rates: Record<string, number> }) {
-  const [on, setOn] = useState<boolean[]>(tasks.map(() => true));
-  const active = tasks.filter((_, i) => on[i]);
-  const est = useMemo(() => estimate({ managed: true, tasks: active.map((t) => ({ baseRate: (rates[t.slug] ?? 150) * 100, quantity: t.hours })) }), [active, rates]);
-  const hours = active.reduce((a, t) => a + t.hours, 0);
+export type PackItem = { template: string; qty: number; size?: string; offsetHours: number; label: string };
+
+export function PackCustomise({ slug, name, items, catalog, config }: { slug: string; name: string; items: PackItem[]; catalog: CatalogTpl[]; config: PricingConfig }) {
+  const [on, setOn] = useState<Record<number, boolean>>(Object.fromEntries(items.map((_, i) => [i, true])));
+  const [qty, setQty] = useState<Record<number, number>>(Object.fromEntries(items.map((it, i) => [i, it.qty])));
+  const q = useMemo(() => quote({ managed: true, config, lines: items.flatMap((it, i) => { const t = catalog.find((c) => c.slug === it.template); return on[i] && t ? [{ template: t, qty: qty[i], size: (it.size ?? "medium") as Size }] : []; }) }), [on, qty, items, catalog, config]);
   return (
-    <div className="grid gap-8 md:grid-cols-[1fr_1.1fr] md:items-start">
-      <div>
-        <h3 className="font-display text-3xl font-bold">Apne hisaab se badlo</h3>
-        <p className="mt-1 text-ink/70">Tick hata do to receipt turant badal jaati hai.</p>
-        <ul className="mt-5 space-y-2">
-          {tasks.map((t, i) => (
-            <li key={t.label}>
-              <label className={`flex cursor-pointer items-center gap-3 rounded-2xl border-2 p-3 ${on[i] ? "border-tide bg-white/70" : "border-dashed border-tide/30 opacity-60"}`}>
-                <input type="checkbox" className="h-5 w-5 accent-[#235347]" checked={on[i]} onChange={() => setOn((o) => o.map((v, j) => (j === i ? !v : v)))} />
-                <span className="flex-1"><span className="block font-semibold">{t.label}</span><span className="font-mono text-xs opacity-70">{t.offset} · {t.hours} hr</span></span>
-              </label>
-            </li>
-          ))}
-        </ul>
+    <div className="grid items-start gap-8 md:grid-cols-[1fr_1.1fr]">
+      <div className="space-y-2">
+        <h3 className="display text-2xl">Customise it</h3>
+        {items.map((it, i) => (
+          <div key={it.label} className={`flex items-center gap-3 rounded-2xl border-2 border-ink p-3 ${on[i] ? "bg-paper" : "bg-cream opacity-60"}`}>
+            <input type="checkbox" className="h-5 w-5" checked={on[i]} onChange={() => setOn({ ...on, [i]: !on[i] })} aria-label={`Include ${it.label}`} />
+            <span className="flex-1 font-semibold">{it.label}<span className="mono block text-xs font-normal opacity-60">T{it.offsetHours > 0 ? "+" : "-"}{Math.abs(it.offsetHours)}h</span></span>
+            <span className="flex items-center rounded-full border-2 border-ink"><button aria-label="Less" className="h-8 w-8" onClick={() => setQty({ ...qty, [i]: Math.max(1, qty[i] - 1) })}>−</button><span className="mono w-5 text-center">{qty[i]}</span><button aria-label="More" className="h-8 w-8" onClick={() => setQty({ ...qty, [i]: Math.min(10, qty[i] + 1) })}>+</button></span>
+          </div>
+        ))}
       </div>
-      <div className="relative rotate-1">
-        {active.length === 0 ? (
-          <p className="hand rounded-3xl border-2 border-dashed border-tide/40 p-8 text-center text-2xl">Abhi kuch nahi. Peaceful hai, enjoy karo.</p>
-        ) : (
-          <>
-            <Receipt
-              title={title.toUpperCase()}
-              lines={[
-                ...active.map((t) => ({ label: t.label, sub: `${t.offset} · ${t.hours} hr`, amount: rupees((rates[t.slug] ?? 150) * 100 * t.hours), stamped: true })),
-                { label: "Platform fee", amount: rupees(est.platformFee) },
-                { label: "Coordination fee", amount: rupees(est.coordinationFee) },
-              ]}
-              totalLabel="TOTAL"
-              total={<span><Meter prefix="₹" value={Math.round(est.low / 100)} /> - <Meter value={Math.round(est.high / 100)} /></span>}
-              foot={`${hours} hrs of helper time. Includes Shell Guarantee. Exact price after human check.`}
-              stamp={<Stamp tone="green">VERIFIED</Stamp>}
-            />
-            <Link href={`/waitlist?msg=${encodeURIComponent(`${title}: ${active.map((t) => t.label).join(", ")}`)}`} className="pill pill-sun mt-5 w-full justify-center" data-cta="pack_order">Order this pack</Link>
-          </>
-        )}
+      <div>
+        <Receipt key={JSON.stringify(on) + JSON.stringify(qty)} title={name} meta="Live estimate" animate={false} lines={q.lines.map((l) => ({ name: l.name, qty: l.qty > 1 ? String(l.qty) : undefined, price: inr(l.price), stamp: true }))} fees={[{ name: "Platform fee", price: inr(q.platformFee) }, ...(q.coordinationFee ? [{ name: "Coordination fee", price: inr(q.coordinationFee) }] : []), ...(q.minOrderTopUp ? [{ name: "Minimum order top-up", price: inr(q.minOrderTopUp) }] : [])]} total={<span className="flex items-baseline gap-1"><Meter value={q.range[0] / 100} prefix="₹" /><span className="text-xs">to</span><Meter value={q.range[1] / 100} prefix="₹" /></span>} totalLabel="ESTIMATE" footer={`About ${minutesToText(q.minutes)} of work. Shell Guarantee included.`} />
+        <div className="mt-4 flex flex-wrap gap-3"><Link href={`/app?pack=${slug}`} className="btn btn-sun" data-cta="pack_order">Order this pack</Link><Link href={`/waitlist?text=${encodeURIComponent(name)}`} className="btn btn-ghost">Not in my society yet</Link></div>
       </div>
     </div>
   );

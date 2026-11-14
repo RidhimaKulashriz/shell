@@ -1,210 +1,102 @@
 "use client";
-
 import { useEffect, useRef, useState } from "react";
-import { Meter, Ring, Stamp } from "./ui";
-import { track } from "@/lib/track";
-import { SITE_URL } from "@/lib/site";
+import { Stamp } from "@/components/ui";
+import { track } from "@/lib/analytics";
 
-type Soc = { id: string; slug?: string; name: string; area: string; waiting: number; unlockTarget: number; status: string };
-type Result = { name: string; position: number; referralCode: string; referrals: number; existing?: boolean; society: { name: string; waiting: number; target: number } | null };
+type Result = { position: number; neighbours: number; referralCode: string; shareUrl: string; cardUrl: string; existing?: boolean };
 
-const inputCls = "w-full rounded-xl border-2 border-tide/30 bg-white/70 px-4 py-3 text-base outline-none focus:border-euca focus:bg-white";
-
-export function WaitlistForm({ prefill = "", compact = false }: { prefill?: string; compact?: boolean }) {
-  const [socs, setSocs] = useState<Soc[]>([]);
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [role, setRole] = useState<"help" | "earn" | "both">("help");
-  const [societyQ, setSocietyQ] = useState("");
-  const [societyId, setSocietyId] = useState<string | null>(null);
-  const [tower, setTower] = useState("");
-  const [message, setMessage] = useState(prefill);
-  const [referral, setReferral] = useState("");
-  const [consent, setConsent] = useState(false);
-  const [otp, setOtp] = useState("");
+/** Receipt-styled waitlist form. WhatsApp OTP verified, one signup per number, referral aware. */
+export function WaitlistForm({ societies, initialText = "", refCode = "", initialSociety = "", light = true }: { societies: string[]; initialText?: string; refCode?: string; initialSociety?: string; light?: boolean }) {
+  const [f, setF] = useState({ name: "", phone: "", otp: "", role: "help", society: initialSociety, tower: "", message: initialText, ref: refCode, consent: false });
   const [otpSent, setOtpSent] = useState(false);
-  const [devCode, setDevCode] = useState<string | null>(null);
-  const [timer, setTimer] = useState(0);
-  const [err, setErr] = useState<string | null>(null);
+  const [dev, setDev] = useState<string | undefined>();
+  const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState<Result | null>(null);
+  const [res, setRes] = useState<Result | null>(null);
+  const [copied, setCopied] = useState(false);
   const started = useRef(false);
-
-  useEffect(() => {
-    fetch("/api/waitlist/stats").then((r) => r.json()).then((j) => {
-      setSocs(j.societies ?? []);
-      const want = new URLSearchParams(location.search).get("society");
-      const hit = (j.societies ?? []).find((s: Soc) => s.slug === want);
-      if (hit) { setSocietyId(hit.id); setSocietyQ(`${hit.name}, ${hit.area}`); }
-    }).catch(() => {});
-    const q = new URLSearchParams(location.search);
-    if (q.get("ref")) setReferral(q.get("ref")!.toUpperCase());
-    if (q.get("msg")) setMessage(q.get("msg")!);
-    if (q.get("role") === "earn") setRole("earn");
-    try {
-      const saved = sessionStorage.getItem("shell_demo_text");
-      if (saved && !q.get("msg") && !prefill) setMessage(saved);
-    } catch {}
-  }, [prefill]);
-  useEffect(() => {
-    if (prefill) setMessage(prefill);
-  }, [prefill]);
-  useEffect(() => {
-    if (timer <= 0) return;
-    const t = setTimeout(() => setTimer(timer - 1), 1000);
-    return () => clearTimeout(t);
-  }, [timer]);
-
-  const start = () => {
-    if (!started.current) {
-      started.current = true;
-      track("form_start", { form: "waitlist" });
-    }
+  useEffect(() => setF((x) => ({ ...x, message: x.message || initialText })), [initialText]);
+  const set = (k: string, v: string | boolean) => {
+    if (!started.current) { started.current = true; track("form_start", { form: "waitlist" }); }
+    setF((x) => ({ ...x, [k]: v }));
   };
-  const fail = (m: string) => {
-    setErr(m);
-    track("form_error", { form: "waitlist", message: m });
+  const post = async (url: string, data: unknown) => {
+    const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(data) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error?.message ?? "Kuch gadbad ho gayi");
+    return j;
   };
-
-  const matched = socs.filter((s) => societyQ.length > 0 && `${s.name} ${s.area}`.toLowerCase().includes(societyQ.toLowerCase()));
-
-  async function sendOtp() {
-    setErr(null);
-    if (name.trim().length < 2) return fail("Naam daalo.");
-    if (!/^(\+?91)?[6-9]\d{9}$/.test(phone.replace(/\s/g, ""))) return fail("10 digit ka Indian mobile number daalo.");
-    if (!consent) return fail("WhatsApp messages ke liye tick karna zaroori hai.");
-    setBusy(true);
-    const r = await fetch("/api/waitlist/otp", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phone }) });
-    const j = await r.json().catch(() => ({}));
-    setBusy(false);
-    if (!r.ok) return fail(j?.error?.hi ?? "Kuch gadbad hui. Dobara try karo.");
-    setOtpSent(true);
-    setTimer(30);
-    setDevCode(j.devCode ?? null);
-  }
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!otpSent) return sendOtp();
-    setErr(null);
-    if (!/^\d{6}$/.test(otp)) return fail("6 digit ka OTP daalo.");
-    setBusy(true);
-    const r = await fetch("/api/waitlist", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name, phone, otp, role, societyId, societyText: societyId ? null : societyQ, towerText: tower || null, message: message || null, referral: referral || null, consent }),
-    });
-    const j = await r.json().catch(() => ({}));
-    setBusy(false);
-    if (!r.ok) return fail(j?.error?.hi ?? "Kuch gadbad hui. Dobara try karo.");
-    track("form_submit", { form: "waitlist", role });
-    track("waitlist_submitted", { role });
-    setDone(j);
+  const sendOtp = async () => {
+    setErr(""); setBusy(true);
     try {
-      navigator.vibrate?.(30);
-    } catch {}
-  }
+      const j = await post("/api/waitlist/otp", { phone: f.phone });
+      setOtpSent(true); setDev(j.devCode);
+    } catch (e) { setErr((e as Error).message); track("form_error", { form: "waitlist", step: "otp" }); }
+    setBusy(false);
+  };
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault(); setErr(""); setBusy(true);
+    try {
+      const j = await post("/api/waitlist", { ...f, ref: f.ref || undefined, tower: f.tower || undefined, message: f.message || undefined });
+      setRes(j);
+      track("form_submit", { form: "waitlist" }); track("waitlist_submitted", { role: f.role });
+      if (navigator.vibrate) navigator.vibrate(40);
+    } catch (e) { setErr((e as Error).message); track("form_error", { form: "waitlist" }); }
+    setBusy(false);
+  };
+  const L = (id: string, label: string) => <label htmlFor={id} className="mono mb-1 block text-xs uppercase tracking-wider opacity-70">{label}</label>;
 
-  if (done) {
-    const link = `${SITE_URL}/waitlist?ref=${done.referralCode}`;
-    const card = `/api/og?title=${encodeURIComponent(done.name.split(" ")[0] + " is on the Shell list")}&sub=${encodeURIComponent(done.society?.name ?? "Delhi")}&n=${done.position}`;
-    const share = `https://wa.me/?text=${encodeURIComponent(`Main Shell ki waitlist mein #${done.position} hoon. Tum bhi judo, society mein jaldi aayega: ${link}`)}`;
-    const pct = done.society ? Math.min(100, (done.society.waiting / done.society.target) * 100) : 0;
+  if (res)
     return (
-      <div className="receipt scallop relative mx-auto max-w-lg px-6 pb-12 pt-6" aria-live="polite">
-        <div className="flex justify-between text-[11px] tracking-[0.2em]"><span>SHELL WAITLIST</span><span>{done.existing ? "ALREADY IN" : "NEW"}</span></div>
-        <hr className="perf my-3" />
-        <div className="relative">
-          <p className="font-display text-4xl font-bold leading-tight">{done.existing ? "Aap pehle se list mein ho." : "You're in."} <span className="font-mono text-3xl">#<Meter value={done.position} /></span></p>
-          <div className="absolute -top-2 right-0"><Stamp thump>{done.existing ? "VERIFIED" : "PAID IN"}</Stamp></div>
-        </div>
-        <p className="mt-2 text-sm">Shukriya, {done.name.split(" ")[0]}. Double opt-in ke liye WhatsApp par ek confirm message aayega.</p>
-        {done.society ? (
-          <div className="mt-4">
-            <div className="flex items-center justify-between text-xs"><span>{done.society.name}</span><span>{done.society.waiting} / {done.society.target} neighbours</span></div>
-            <div className="mt-1 h-3 overflow-hidden rounded-full bg-tide/15"><div className="h-full rounded-full bg-euca" style={{ width: `${Math.max(3, pct)}%`, transition: "width 1s" }} /></div>
+      <div className="receipt scallop-b mx-auto max-w-md text-ink">
+        <div className="text-center">
+          <div className="mono text-xs tracking-widest opacity-60">SHELL WAITLIST RECEIPT</div>
+          <div className="my-6 flex justify-center"><Stamp large tone="brick" label={`You're in. #${res.position}`} rot={-7} /></div>
+          <p className="display text-2xl">{res.existing ? "Aap pehle se list mein hain." : "Shukriya! Aap list mein hain."}</p>
+          <div className="perf" />
+          <div className="receipt-line"><span>Queue position</span><span className="leader" /><b>#{res.position}</b></div>
+          <div className="receipt-line"><span>Neighbours in your area</span><span className="leader" /><b>{res.neighbours}</b></div>
+          <div className="receipt-line"><span>Your referral code</span><span className="leader" /><b>{res.referralCode}</b></div>
+          <div className="perf" />
+          <p className="text-sm">Har dost jo join karta hai, aap 5 jagah upar aate ho aur launch par credit milta hai.</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <a className="btn btn-forest btn-sm" target="_blank" rel="noopener noreferrer" href={`https://wa.me/?text=${encodeURIComponent(`Main Shell ki list mein #${res.position} hoon. Aap bhi judo: ${res.shareUrl}`)}`} onClick={() => track("referral_link_shared", { via: "whatsapp" })}>WhatsApp pe bhejo</a>
+            <button className="btn btn-cream btn-sm" onClick={() => { navigator.clipboard?.writeText(res.shareUrl); setCopied(true); track("referral_link_shared", { via: "copy" }); }}>{copied ? "Copied" : "Copy link"}</button>
+            <a className="btn btn-ghost btn-sm" href={res.cardUrl} target="_blank" rel="noopener noreferrer">Share card</a>
           </div>
-        ) : null}
-        <hr className="perf my-4" />
-        <p className="text-xs uppercase tracking-widest">Aapka referral link</p>
-        <div className="mt-1 flex items-center gap-2">
-          <input readOnly value={link} className={`${inputCls} !py-2 font-mono text-xs`} onFocus={(e) => e.currentTarget.select()} aria-label="Referral link" />
-          <button className="pill pill-forest !px-3 !py-2 text-xs" onClick={() => { navigator.clipboard?.writeText(link); track("referral_link_shared", { via: "copy" }); }}>Copy</button>
-        </div>
-        <p className="mt-2 text-xs opacity-70">Har verified dost aapko {3} jagah aage le jata hai, aur launch par ek credit milta hai.</p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <a className="pill pill-sun text-sm" href={share} target="_blank" rel="noopener noreferrer" onClick={() => track("referral_link_shared", { via: "whatsapp" })}>WhatsApp par bhejo</a>
-          <a className="pill pill-line text-sm" href={card} target="_blank" rel="noopener noreferrer" download>Share card</a>
         </div>
       </div>
     );
-  }
 
   return (
-    <form onSubmit={submit} onFocus={start} className={`receipt scallop relative mx-auto px-5 pb-10 pt-6 md:px-8 ${compact ? "max-w-xl" : "max-w-2xl"}`} noValidate aria-label="Join the Shell waitlist">
-      <div className="flex justify-between text-[11px] tracking-[0.2em]"><span>SHELL WAITLIST</span><span>FORM 01</span></div>
-      <hr className="perf my-3" />
-      <div className="mb-4 grid grid-cols-3 gap-1 rounded-full bg-tide/10 p-1 text-sm font-semibold" role="radiogroup" aria-label="I want">
-        {([["help", "Mujhe help chahiye"], ["earn", "Mujhe kamana hai"], ["both", "Dono"]] as const).map(([v, l]) => (
-          <button type="button" key={v} role="radio" aria-checked={role === v} onClick={() => setRole(v)} className={`rounded-full px-2 py-2 text-[0.8rem] leading-tight ${role === v ? "bg-tide text-cream shadow" : ""}`}>{l}</button>
-        ))}
-      </div>
-      <div className="grid gap-3 font-sans md:grid-cols-2">
-        <label className="block text-sm font-medium">Naam
-          <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required />
-        </label>
-        <label className="block text-sm font-medium">WhatsApp number
-          <div className="flex">
-            <span className="grid place-items-center rounded-l-xl border-2 border-r-0 border-tide/30 bg-tide/10 px-3 font-mono text-sm">+91</span>
-            <input className={`${inputCls} !rounded-l-none`} inputMode="numeric" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel-national" placeholder="98xxxxxxxx" required disabled={otpSent} />
-          </div>
-        </label>
-        <div className="relative md:col-span-2">
-          <label className="block text-sm font-medium">Society ya area
-            <input className={inputCls} value={societyQ} onChange={(e) => { setSocietyQ(e.target.value); setSocietyId(null); }} placeholder="Apni society dhundo" autoComplete="off" />
-          </label>
-          {matched.length > 0 && !societyId ? (
-            <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border-2 border-tide bg-paper shadow-lg" role="listbox">
-              {matched.map((s) => (
-                <li key={s.id}><button type="button" role="option" aria-selected={false} className="block w-full px-4 py-2 text-left text-sm hover:bg-sage/30" onClick={() => { setSocietyId(s.id); setSocietyQ(`${s.name}, ${s.area}`); }}>{s.name} <span className="opacity-60">· {s.area}</span></button></li>
-              ))}
-            </ul>
-          ) : null}
-          {societyQ.length > 2 && !societyId && matched.length === 0 ? <p className="mt-1 text-xs opacity-70">Aapki society list mein nahi hai? Koi baat nahi, hum use &ldquo;{societyQ}&rdquo; ke naam se likh lenge.</p> : null}
+    <form onSubmit={submit} className={`receipt scallop-b mx-auto w-full max-w-lg !text-[14px] ${light ? "" : ""}`} noValidate>
+      <div className="mono text-xs tracking-widest opacity-60">SHELL WAITLIST / FORM NO. 001</div>
+      <div className="perf" />
+      <div className="grid gap-4">
+        <div role="radiogroup" aria-label="What do you want" className="grid grid-cols-3 gap-2">
+          {[["help", "Mujhe help chahiye"], ["earn", "Mujhe kamana hai"], ["both", "Dono"]].map(([v, l]) => (
+            <button type="button" key={v} role="radio" aria-checked={f.role === v} onClick={() => set("role", v)} className={`rounded-xl border-2 border-ink px-2 py-2 text-sm font-bold ${f.role === v ? "bg-forest text-cream" : "bg-cream"}`}>{l}</button>
+          ))}
         </div>
-        <label className="block text-sm font-medium">Tower (optional)
-          <input className={inputCls} value={tower} onChange={(e) => setTower(e.target.value)} placeholder="Tower C" />
-        </label>
-        <label className="block text-sm font-medium">Referral code
-          <input className={`${inputCls} font-mono uppercase`} value={referral} onChange={(e) => setReferral(e.target.value)} maxLength={12} />
-        </label>
-        <label className="block text-sm font-medium md:col-span-2">Kya karwana hai?
-          <textarea className={inputCls} rows={2} value={message} onChange={(e) => setMessage(e.target.value)} maxLength={600} placeholder="Jaise: weekend pe ghar saaf, groceries, wardrobe" />
-        </label>
-        <label className="flex items-start gap-2 text-sm md:col-span-2">
-          <input type="checkbox" className="mt-1 h-4 w-4" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-          <span>Haan, Shell mujhe WhatsApp par waitlist ke updates bhej sakta hai. Main kabhi bhi STOP likh kar band kar sakta/sakti hoon.</span>
-        </label>
-        {otpSent ? (
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium">6 digit OTP, {phone} par bheja
-              <input className={`${inputCls} font-mono text-xl tracking-[0.5em]`} inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} autoFocus />
-            </label>
-            {devCode ? <p className="mt-1 rounded-lg bg-sand/50 px-3 py-1.5 font-mono text-xs">Demo mode: SMS provider connected nahi hai. Aapka code: <b>{devCode}</b></p> : null}
-            <div className="mt-1 text-xs">
-              {timer > 0 ? `Dobara bhejne ke liye ${timer}s` : <button type="button" className="underline" onClick={sendOtp}>OTP dobara bhejo</button>}
-              {" · "}
-              <button type="button" className="underline" onClick={() => { setOtpSent(false); setOtp(""); }}>Number badlo</button>
-            </div>
-          </div>
-        ) : null}
+        <div>{L("wl-name", "Naam / Name")}<input id="wl-name" className="field" value={f.name} onChange={(e) => set("name", e.target.value)} autoComplete="name" required /></div>
+        <div>
+          {L("wl-phone", "WhatsApp number")}
+          <div className="flex gap-2"><span className="field !w-16 text-center">+91</span><input id="wl-phone" className="field" inputMode="numeric" autoComplete="tel-national" maxLength={10} value={f.phone} onChange={(e) => set("phone", e.target.value.replace(/\D/g, ""))} required /><button type="button" className="btn btn-forest btn-sm shrink-0" disabled={f.phone.length !== 10 || busy} onClick={sendOtp}>{otpSent ? "Resend" : "OTP bhejo"}</button></div>
+        </div>
+        {otpSent && <div>{L("wl-otp", "6-digit OTP")}<input id="wl-otp" className="field mono tracking-[0.4em]" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={f.otp} onChange={(e) => set("otp", e.target.value.replace(/\D/g, ""))} />{dev && <p className="mt-1 text-xs">Demo mode: OTP is <b className="mono">{dev}</b></p>}</div>}
+        <div>
+          {L("wl-soc", "Society ya area")}
+          <input id="wl-soc" list="soc-list" className="field" value={f.society} onChange={(e) => set("society", e.target.value)} placeholder="Start typing your society" />
+          <datalist id="soc-list">{societies.map((s) => <option key={s} value={s} />)}</datalist>
+          <p className="mt-1 text-xs opacity-70">Aapki society list mein nahi? Bas naam likh do, hum add kar lenge.</p>
+        </div>
+        <div>{L("wl-tower", "Tower (optional)")}<input id="wl-tower" className="field" value={f.tower} onChange={(e) => set("tower", e.target.value)} /></div>
+        <div>{L("wl-msg", "Kya karwana hai?")}<textarea id="wl-msg" className="field min-h-[84px]" value={f.message} onChange={(e) => set("message", e.target.value)} placeholder="Kal guests aa rahe hain, ghar saaf karwana hai..." /></div>
+        <div>{L("wl-ref", "Referral code (optional)")}<input id="wl-ref" className="field mono uppercase" value={f.ref} onChange={(e) => set("ref", e.target.value)} maxLength={20} /></div>
+        <label className="flex items-start gap-3 text-sm"><input type="checkbox" className="mt-1 h-5 w-5" checked={f.consent} onChange={(e) => set("consent", e.target.checked)} /> <span>Mujhe WhatsApp par Shell ke updates chahiye. Main kabhi bhi band kar sakta/sakti hoon.</span></label>
+        {err && <p role="alert" className="rounded-xl bg-brick/10 p-2 text-sm font-semibold text-brick">{err}</p>}
+        <button type="submit" className="btn btn-sun w-full" disabled={busy || !f.consent || !f.name || f.phone.length !== 10 || f.otp.length !== 6}>{busy ? "Ek second..." : "List mein naam likho"}</button>
       </div>
-      {err ? <p role="alert" className="mt-3 rounded-lg bg-stamp/10 px-3 py-2 text-sm font-medium text-stamp">{err}</p> : null}
-      <button className="pill pill-sun mt-5 w-full justify-center" disabled={busy} data-cta="waitlist_submit">
-        {busy ? "Ek second..." : otpSent ? "Verify karke list mein judo" : "OTP bhejo"}
-      </button>
-      <p className="mt-3 text-center text-[11px] opacity-60">Hum aapka number kisi ko nahi bechte. <a className="underline" href="/legal/privacy">Privacy</a></p>
-      <div className="mt-4 hidden justify-center md:flex"><Ring percent={otpSent ? 66 : 33} size={64} label="form" /></div>
     </form>
   );
 }

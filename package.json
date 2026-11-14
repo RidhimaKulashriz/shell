@@ -9,13 +9,16 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@playwright/test": "^1.65.1",
+    "@types/qrcode": "^1.5.6",
     "dotenv": "17.3.1",
     "drizzle-orm": "0.45.2",
-    "h3-js": "^4.5.0",
     "next": "16.4.2",
     "pg": "8.20.0",
+    "qrcode": "^1.5.4",
     "react": "19.2.6",
     "react-dom": "19.2.6",
+    "tsx": "^4.23.15",
     "vitest": "^5.1.0",
     "zod": "^4.6.7"
   },

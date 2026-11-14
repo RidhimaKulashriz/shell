@@ -1,26 +1,25 @@
 import Link from "next/link";
+import { Icon } from "@/components/Icon";
 
 export default function NotFound() {
   return (
-    <section className="band-cream px-5 py-16 md:py-24">
-      <div className="mx-auto grid max-w-5xl items-center gap-10 md:grid-cols-2">
-        <svg viewBox="0 0 320 240" className="w-full" role="img" aria-label="An empty room with an open door">
-          <rect x="10" y="190" width="300" height="12" rx="4" fill="#E8C48A" stroke="#0E1A17" strokeWidth="3" />
-          <path d="M30 190 L30 30 L290 30 L290 190" fill="#F4F1E6" stroke="#0E1A17" strokeWidth="3" strokeLinejoin="round" />
-          <path d="M210 190 L210 80 L260 66 L260 190 Z" fill="#8EB69B" stroke="#0E1A17" strokeWidth="3" strokeLinejoin="round" />
-          <circle cx="222" cy="136" r="4" fill="#0E1A17" />
-          <rect x="60" y="62" width="90" height="62" fill="#DAF1DE" stroke="#0E1A17" strokeWidth="3" />
-          <path d="M105 62 V124 M60 93 H150" stroke="#0E1A17" strokeWidth="3" />
-          <path d="M70 190 C70 168 100 168 100 190" fill="#E8C48A" stroke="#0E1A17" strokeWidth="3" />
-          <path d="M128 150 C150 110 170 150 150 190" fill="none" stroke="#235347" strokeWidth="3" strokeLinecap="round" strokeDasharray="1 8" />
+    <main id="main" className="grid min-h-screen place-items-center bg-cream px-6 py-16">
+      <div className="max-w-md text-center">
+        <svg viewBox="0 0 260 180" className="mx-auto w-72" aria-hidden>
+          <g filter="url(#wobble)" fill="none" stroke="#0e1a17" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="20" y="20" width="220" height="140" fill="#F4F1E6" />
+            <path d="M20 130 H240" />
+            <path d="M60 130 V90 H110 V130" fill="#E8C48A" />
+            <path d="M150 20 V70 H200 V20" fill="#DAF1DE" />
+            <path d="M170 70 V130 M185 70 V130 M160 130 H196" />
+            <path d="M125 130 q10 -30 22 0" strokeDasharray="2 6" />
+          </g>
         </svg>
-        <div>
-          <p className="stamp">404</p>
-          <h1 className="font-display mt-4 text-5xl font-black leading-none md:text-7xl">Ghar mein koi nahi hai.</h1>
-          <p className="hand mt-4 text-3xl text-euca">Ye page yahan nahi mila.</p>
-          <Link href="/" className="pill pill-sun mt-6">Wapas ghar chalo</Link>
-        </div>
+        <div className="mono mt-4 text-sm tracking-widest text-brick">404</div>
+        <h1 className="display mt-1 text-5xl">Ghar mein koi nahi hai</h1>
+        <p className="mt-3 text-lg">Ye page yahan nahi mila. Shayad link purana hai, ya hum abhi tak wahan pahunche nahi.</p>
+        <Link href="/" className="btn btn-sun mt-6"><Icon name="home" size={22} tone="none" /> Ghar wapas chalo</Link>
       </div>
-    </section>
+    </main>
   );
 }

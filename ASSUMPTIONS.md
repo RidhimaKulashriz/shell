@@ -1,35 +1,45 @@
-# Assumptions and decisions (Phase 0)
+# Assumptions, deviations and what is not built
 
-Decided without asking, recorded here.
+Decided without asking, as the brief allows. Safer and simpler options were chosen.
 
-## Scope
-- The brief's section 14 (phase list) was not included. I treated **Phase 0 = the public website + waitlist**: design system, all public pages, waitlist with OTP, referral queue, hex waitlist map, SEO, consent, analytics sink, catalog seeded from the database, pricing engine, anti-bypass scanner and tests.
-- Customer app, helper portal, ops console and society portal (sections 17 to 19) are **not built yet**. Their engines that the website needs (pricing, keyword demo, leakage scanner, geo helpers) are built and tested.
+## Deviations from the brief
+- **Drizzle ORM instead of Prisma, plain Postgres instead of PostGIS, single Next.js app instead of a pnpm/Turborepo monorepo.**
+  The managed environment provides Drizzle and Postgres without PostGIS. Points are stored as lat/lng doubles. `lib/geo.ts`
+  implements haversine, point-in-polygon, an H3-style hex index (res 8 and 9, same cell sizes as H3) and a nearest-neighbour + 2-opt
+  stop ordering. Swapping to PostGIS `geography` columns and real H3 is a schema change, not a rewrite.
+- **No Redis/BullMQ.** Offer expiry, re-offer and no-show rules are evaluated on read and on action. A queue is the next step.
+- **Map provider is a custom brand-palette SVG** (works offline, no tile key, fast on cheap Android). The `PulseMap` props are the MapProvider
+  seam for MapLibre GL with MapTiler/Stadia tiles. Google Routes is not called: travel time is estimated from distance in `lib/geo.ts`.
+- **Language:** English, Hindi and Hinglish are stored per user and in a cookie. Hindi strings cover the global shell, key headings, FAQs,
+  notification catalogue and category intros; the rest of the interface is Hinglish by design. hreflang uses `?lang=` URLs.
+- **Auth** is phone OTP with httpOnly session cookies (hashed in DB) and role checks in server components and API wrappers.
+  Staff two-factor is not built. Only CUSTOMER and HELPER can self-register; staff accounts are seeded.
+- **Photos** are compressed in the browser and stored as data URLs. Swap the `photos.url` writer for signed S3 uploads.
+- **Receipt OCR** is manual line entry by the helper with an itemised approval flow. The OCR provider plugs in at `tasks/[id]/expense`.
+- **PDF resume** is a print-optimised page (`/p/[slug]/resume`) with Save as PDF.
+- **Plan engine** is an offline keyword planner behind the `PlanLLM` interface. Prices never come from it. Low confidence, banned words
+  or zero matches set `needsHuman`, and every plan is reviewed by ops before the customer sees it.
 
-## Stack deviations (the sandbox is fixed to Next.js 16 + Drizzle + PostgreSQL)
-- **Drizzle instead of Prisma.** Money is integer paise, times UTC, UUID keys, audit log is append-only, as specified.
-- **No PostGIS yet.** Geography is stored as lat/lng doubles plus **H3 hex ids (res 8 and 9)** on waitlist rows. A PostGIS migration is planned for Phase 1 when polygons and pings land.
-- **No pnpm/Turborepo monorepo, Redis or BullMQ.** Rate limits are in-memory per instance. Phase 1 moves to Redis.
-- **Framer Motion not used.** Motion is CSS + IntersectionObserver for bundle size on cheap Android; reduced-motion is respected.
-- **Maps:** a `MapProvider` interface exists (`src/lib/geo.ts`). Phase 0 draws hex maps in SVG in the brand palette, so no tile key is needed. MapLibre + MapTiler can plug in later.
-- **MDX not used.** Guides are typed content in `src/lib/content.ts`; a CMS comes with the ops console.
-- **Fonts** load from Google Fonts via `<link>` (Fraunces with SOFT and WONK axes, Instrument Serif, DM Sans, DM Mono, Caveat, Noto Sans Devanagari).
-- **Icons:** a custom 40-icon set in one wobbly line style (`src/components/Icon.tsx`).
+## Mocked (works end to end, needs a key to go live)
+OTP delivery, Razorpay orders and webhook (signature verification is real HMAC), WhatsApp/push sending, KYC (only a reference and verified
+flag are stored, never an ID number), masked calling (UI shows an info dialog), speech-to-text (browser SpeechRecognition hi-IN),
+penny-drop verification, GST invoice generation.
 
-## Behaviour
-- **OTP is a mock provider by default.** `OTP_PROVIDER=mock` returns the code in the API response and shows it in the form as "Demo mode". Set `OTP_PROVIDER=msg91` and implement `sendOtp()` in `src/app/api/waitlist/otp/route.ts` for real WhatsApp/SMS.
-- **One signup per number:** after OTP, an existing number gets its existing queue position back.
-- **Queue position** = rank by `seq - 3 x verified referrals`. Each verified referral moves you up 3 places.
-- **Map privacy:** counts below 3 per hex are shown as "few" (1) so nobody can be located.
-- **Honest numbers:** counters show only above 10; otherwise a handwritten line. Helpers verified, jobs and rating are 0/null until Phase 1 tables exist.
-- **Announcement strip** reads from the `announcements` table; `{count}` is replaced with the live waitlist count, or "Be one of the first" under 10.
-- **Language toggle** switches chrome and key hero strings between English and Devanagari Hindi. Long-form content is Hinglish by design (brand voice). Full Hindi translation arrives with the CMS translation fields.
-- **hreflang** points both `en` and `hi` to the same URL because language is a cookie, not a path.
-- **Analytics:** a first-party sink at `/api/events`, active only after cookie consent. PostHog goes behind the same `track()` in Phase 1.
-- **Legal pages** are templates marked DRAFT. Grievance officer name and address are placeholders.
-- **Placeholders to replace:** contact email, WhatsApp number, safety line (env vars below), social links.
-- **Demo data:** three fictional societies (Sunrise Heights is the pilot with 2 gates and Towers A to F), 16 categories, 7 packs. No fake waitlist rows, no fake testimonials.
-- **Sample content** (Riya's passport, Rahul's helper card, receipts on the home page) is labelled as a sample.
+## Real
+Pricing engine with versioned config in the database, double-entry ledger with balanced journals, state machines with guards, geofenced
+check-in (150 m) + door OTP + 3-strike alert, adaptive location pings with spoof, drift and impossible-speed checks, anti-bypass scanner
+with blur-and-warn and fraud alerts, escrow release after approval, Circle fill/confirm logic, idempotent checkout, signed idempotent webhook,
+audit log (including staff access to location data), dispatch scoring with a plain-language "why we picked", rate limits, CSRF guard,
+DPDP export and 7-day delete request, consent, privacy-safe waitlist hex map (hexes under 3 people hidden).
 
-## Not done in Phase 0 (needs real keys or later phases)
-Razorpay, WhatsApp Business API, KYC, telephony masking, speech-to-text, S3 storage, SSE tracking, PostHog, Sentry, Playwright e2e, Lighthouse CI.
+## Not built yet (honest list)
+- Split payment with flatmates, Wallet top-up, GST invoice PDFs, CSV export buttons, Razorpay reconciliation against the live API
+- Voice notes in chat, real-time translation (stored `translatedBody` is displayed when present), WebSocket channels (SSE is used for tracking)
+- Shell Rush pricing flow and 90-minute countdown beyond the helper opt-in and the 1.5x multiplier
+- Ghost Jobs lockbox OTP flow beyond the key-handling preference, receipt OCR, helper timetable image import
+- Staff 2FA, saved views, drag-and-drop on the dispatch board (assignment uses a reason form), zone polygon drawing editor
+- Location ping partitioning and the 30-day purge job (documented in the privacy policy, needs a cron)
+- Offline-cached map tiles per tower (the SVG map needs none; entrance photos are placeholders)
+- Playwright browser E2E (the critical flow is covered at API level), Lighthouse CI budgets, axe in CI
+- Legal pages are templates marked as drafts and need lawyer review.
+- Seeded demo waitlist rows are labelled `demo`. Counters on the site only show when above 10, and no number is invented.

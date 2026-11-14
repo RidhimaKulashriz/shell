@@ -1,65 +1,123 @@
-import type { SVGProps } from "react";
+// Custom 40-icon set. One wobbly 2px line style, sand/sage spot fill offset like a misregistered print.
+// The wobble comes from the #wobble filter defined once in <SvgDefs/>.
 
-// Custom icon set: one wobbly 2px line style with sand / sage spot fills.
-// viewBox 48. `s` is the spot fill path, `l` are the line paths.
-type Def = { s?: string; c?: "sand" | "sage"; l: string[] };
+const ICONS = {
+  home: "M8 24 L24 10 L40 24 V40 H8 Z M6 24 L24 8 L42 24 M20 40 V30 H28 V40",
+  bag: "M10 18 H38 L40 42 H8 Z M17 18 V14 a7 7 0 0 1 14 0 V18",
+  hanger: "M24 20 L42 34 H6 Z M24 20 V16 a4 4 0 1 0 -4 -4",
+  broom: "M26 26 L38 38 L32 44 L20 32 Z M42 6 L24 28 M22 34 L16 40 M27 38 L22 43",
+  plant: "M14 30 H34 L31 42 H17 Z M24 30 V16 M24 20 C24 12 16 10 12 12 C12 18 18 22 24 20 M24 24 C24 16 32 14 36 16 C36 22 30 26 24 24",
+  parcel: "M6 16 L24 8 L42 16 V34 L24 42 L6 34 Z M6 16 L24 24 L42 16 M24 24 V42 M15 12 L33 20",
+  pan: "M6 22 H34 V32 a4 4 0 0 1 -4 4 H10 a4 4 0 0 1 -4 -4 Z M34 24 H44 M14 16 q2 -3 0 -6 M22 16 q2 -3 0 -6",
+  lamp: "M14 8 H34 L40 26 H8 Z M24 26 V38 M16 42 H32",
+  key: "M7 30 a9 9 0 1 0 18 0 a9 9 0 1 0 -18 0 M23 24 L42 8 M36 14 L40 18 M31 19 L34 22",
+  bicycle: "M4 34 a8 8 0 1 0 16 0 a8 8 0 1 0 -16 0 M28 34 a8 8 0 1 0 16 0 a8 8 0 1 0 -16 0 M12 34 L20 16 H32 L36 34 M20 16 L26 34 M18 12 H24",
+  phone: "M14 6 H34 a3 3 0 0 1 3 3 V39 a3 3 0 0 1 -3 3 H14 a3 3 0 0 1 -3 -3 V9 a3 3 0 0 1 3 -3 Z M21 37 H27",
+  scooter: "M6 38 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0 M32 38 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0 M16 38 H28 L34 12 H40 M30 12 H34 M14 38 L12 28 H24",
+  cart: "M12 14 H42 L38 32 H16 Z M4 8 H10 L16 32 M18 40 a2 2 0 1 0 4 0 a2 2 0 1 0 -4 0 M32 40 a2 2 0 1 0 4 0 a2 2 0 1 0 -4 0",
+  balloon: "M24 6 C34 6 38 14 36 22 C34 30 28 32 24 34 C20 32 14 30 12 22 C10 14 14 6 24 6 Z M24 34 L22 38 L26 40 L24 44",
+  laptop: "M10 12 H38 V32 H10 Z M4 38 H44 L40 32 H8 Z",
+  book: "M6 10 Q15 8 24 12 Q33 8 42 10 V38 Q33 36 24 40 Q15 36 6 38 Z M24 12 V40",
+  dog: "M10 28 C8 18 14 12 22 14 H34 L42 22 L36 25 V38 H30 V30 H18 V38 H12 Z M32 19 L32.5 19",
+  box: "M6 18 L10 8 H38 L42 18 V42 H6 Z M6 18 H42 M20 18 V26 H28 V18",
+  wrench: "M30 6 a10 10 0 0 0 -4 14 L8 38 a4 4 0 0 0 6 6 L32 26 a10 10 0 0 0 14 -4 L40 24 L34 18 L36 12 Z",
+  queue: "M10 12 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0 M4 40 V32 a11 11 0 0 1 22 0 V40 Z M30 16 a4 4 0 1 0 8 0 a4 4 0 1 0 -8 0 M30 28 a8 8 0 0 1 14 5 V40 H32",
+  ball: "M6 24 a18 18 0 1 0 36 0 a18 18 0 1 0 -36 0 M24 6 V42 M6 24 H42 M11 12 Q24 24 11 36 M37 12 Q24 24 37 36",
+  gamepad: "M8 16 H40 a4 4 0 0 1 4 4 V30 a6 6 0 0 1 -11 3 L31 32 H17 L15 33 A6 6 0 0 1 4 30 V20 a4 4 0 0 1 4 -4 Z M14 22 V30 M10 26 H18 M32 24 L32.5 24 M37 28 L37.5 28",
+  clock: "M6 24 a18 18 0 1 0 36 0 a18 18 0 1 0 -36 0 M24 12 V24 L32 29",
+  shield: "M24 6 L40 12 V24 C40 34 32 40 24 44 C16 40 8 34 8 24 V12 Z M16 24 L22 30 L32 18",
+  check: "M8 26 L20 38 L40 12 M6 6 H8",
+  pin: "M24 44 C14 32 10 26 10 20 a14 14 0 0 1 28 0 C38 26 34 32 24 44 Z M18 20 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0",
+  lift: "M10 6 H38 V42 H10 Z M24 6 V42 M16 20 L19 16 L22 20 M26 28 L29 32 L32 28",
+  door: "M12 42 V8 H32 V42 M8 42 H40 M27 26 L27.5 26",
+  chat: "M6 10 H42 V32 H20 L10 42 V32 H6 Z M14 18 H34 M14 24 H26",
+  camera: "M6 14 H14 L18 8 H30 L34 14 H42 V38 H6 Z M16 26 a8 8 0 1 0 16 0 a8 8 0 1 0 -16 0",
+  mic: "M18 12 a6 6 0 0 1 12 0 V24 a6 6 0 0 1 -12 0 Z M10 22 a14 14 0 0 0 28 0 M24 36 V44 M16 44 H32",
+  wallet: "M6 12 H38 V18 M6 12 V40 H42 V18 H10 M32 29 L32.5 29",
+  star: "M24 6 L29 18 L42 19 L32 28 L35 41 L24 34 L13 41 L16 28 L6 19 L19 18 Z",
+  heart: "M24 40 C8 28 6 18 12 12 C17 8 22 11 24 16 C26 11 31 8 36 12 C42 18 40 28 24 40 Z",
+  gift: "M6 18 H42 V26 H6 Z M10 26 V42 H38 V26 M24 18 V42 M24 18 C18 6 10 12 18 18 M24 18 C30 6 38 12 30 18",
+  calendar: "M6 10 H42 V42 H6 Z M6 20 H42 M14 5 V14 M34 5 V14",
+  truck: "M4 14 H30 V34 H4 Z M30 22 H38 L44 28 V34 H30 M8 38 a3 3 0 1 0 6 0 a3 3 0 1 0 -6 0 M32 38 a3 3 0 1 0 6 0 a3 3 0 1 0 -6 0",
+  bell: "M24 6 C16 6 12 12 12 20 V28 L8 34 H40 L36 28 V20 C36 12 32 6 24 6 Z M20 38 a4 4 0 0 0 8 0",
+  sofa: "M4 26 a4 4 0 0 1 8 0 V30 H36 V26 a4 4 0 0 1 8 0 V38 H4 Z M8 22 V14 a4 4 0 0 1 4 -4 H36 a4 4 0 0 1 4 4 V22 M10 38 V42 M38 38 V42",
+  cake: "M8 26 H40 V42 H8 Z M8 34 Q14 38 20 34 T32 34 T40 34 M24 26 V18 M24 12 q3 3 0 6 q-3 -3 0 -6",
+} as const;
 
-const ICONS: Record<string, Def> = {
-  home: { s: "M9 24 L24 10 L39 24 L38 39 L10 39 Z", c: "sand", l: ["M6 25 L24 8.5 L42 25", "M10 22 L10.5 40 L37.5 39.6 L38 22", "M20 40 L20.4 29 L28 29.2 L27.6 40"] },
-  bag: { s: "M10 18 L38 18 L36 40 L12 40 Z", c: "sage", l: ["M10 18.4 L38 17.6 L36.4 40.4 L11.6 40", "M17 18 C16 8 32 8 31 18", "M18 26 C20 30 28 30 30 26"] },
-  hanger: { s: "M6 36 L24 24 L42 36 Z", c: "sand", l: ["M24 24 C24 18 30 18 29 13 C28 8 20 9 21 14", "M24.4 24 L5.6 36.4 L42.4 36 L23.6 24.2"] },
-  broom: { s: "M16 28 L34 28 L38 42 L12 42 Z", c: "sand", l: ["M33 6 L26 28", "M15 28.4 L34.6 27.6 L38.6 42 L11.4 41.6 Z", "M20 33 L19 41", "M26 33 L26 41", "M31 33 L33 41"] },
-  plant: { s: "M15 32 L33 32 L30 42 L18 42 Z", c: "sand", l: ["M14.6 31.6 L33.4 32.2 L30.2 42.4 L17.8 41.8 Z", "M24 31 C24 22 24 18 24 12", "M24 22 C16 22 13 15 14 11 C20 11 24 15 24 22", "M24 18 C31 18 34 12 33 8 C28 8 24 12 24 18"] },
-  parcel: { s: "M8 16 L24 9 L40 16 L40 34 L24 41 L8 34 Z", c: "sage", l: ["M7.6 15.6 L24 8.6 L40.4 16.2 L40 34.4 L24.4 41.4 L8 34.2 Z", "M8 16 L24.4 23.4 L40 16", "M24.4 23.4 L24 41", "M16 12.6 L32 19.6"] },
-  pan: { s: "M6 22 L34 22 L32 34 L8 34 Z", c: "sage", l: ["M5.6 21.8 C6 34 14 38 20 38 C27 38 33 34 34.4 22 Z", "M34 25 L44 21", "M13 17 C12 14 15 13 14 10", "M20 17 C19 14 22 13 21 10", "M27 17 C26 14 29 13 28 10"] },
-  lamp: { s: "M14 10 L34 10 L38 26 L10 26 Z", c: "sand", l: ["M14 9.6 L34.4 10.2 L38.4 26 L9.6 25.6 Z", "M24 26 L24.4 38", "M16 40 C20 37 28 37 32 40.4"] },
-  key: { s: "M6 20 a9 9 0 1 0 18 0 a9 9 0 1 0 -18 0", c: "sand", l: ["M24 19.6 C24 26 18 30 12.6 28 C7 26 6 18 11 14 C16 10 24 13 24 19.6", "M24 20 L43 20.4", "M36 20 L36.4 27", "M42 20.4 L42.2 25"] },
-  bicycle: { s: "M28 14 L32 20 L22 20 Z", c: "sage", l: ["M6 34 a8 8 0 1 0 16 0 a8 8 0 1 0 -16 0", "M26 34 a8 8 0 1 0 16 0 a8 8 0 1 0 -16 0", "M14 34 L22 20 L34 34", "M22 20 L28 14 L33 14", "M18 17 L25 17"] },
-  phone: { s: "M15 7 L33 7 L33 41 L15 41 Z", c: "sage", l: ["M14.6 6.6 L33.4 7.2 L33 41.4 L15 40.8 Z", "M21 36.5 L27 36.5", "M20 11 L28 11"] },
-  scooter: { s: "M12 26 L30 26 L32 32 L12 32 Z", c: "sand", l: ["M4 36 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0", "M34 36 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0", "M14 36 L34 36", "M12 26 L30 26 L32 33", "M35 36 L31 12 L38 12", "M18 26 L18 20 L24 20"] },
-  plate: { s: "M6 24 a18 18 0 1 0 36 0 a18 18 0 1 0 -36 0", c: "sage", l: ["M6 24 a18 18 0 1 0 36.4 0.4 a18 18 0 1 0 -36.4 -0.4", "M14 24 a10 10 0 1 0 20 0 a10 10 0 1 0 -20 0", "M42 8 L42 20", "M4 8 L4 14"] },
-  cart: { s: "M12 14 L42 14 L38 30 L16 30 Z", c: "sand", l: ["M4 8 L10 8 L16 30.4 L38 30", "M11.6 14 L42.4 14.4 L38.2 29.6", "M17 38 a2.6 2.6 0 1 0 5.2 0 a2.6 2.6 0 1 0 -5.2 0", "M32 38 a2.6 2.6 0 1 0 5.2 0 a2.6 2.6 0 1 0 -5.2 0"] },
-  balloon: { s: "M12 18 C12 6 36 6 36 18 C36 28 28 32 24 34 C20 32 12 28 12 18", c: "sand", l: ["M12.4 18 C11 5 37 5 35.6 18.4 C35 28 28 31 24 34 C20 31 13 28 12.4 18", "M24 34 L22 38 L26 38 Z", "M24 38 C20 42 28 44 24 47"] },
-  party: { s: "M8 40 L16 14 L34 32 Z", c: "sand", l: ["M7.6 40.4 L16.4 14 L34.4 32.4 Z", "M24 8 L25 14", "M34 14 L30 18", "M40 24 L34 24", "M38 6 L37 10"] },
-  laptop: { s: "M10 12 L38 12 L38 30 L10 30 Z", c: "sage", l: ["M9.6 11.6 L38.4 12.2 L38 30.4 L10 30 Z", "M4 36 L44 36.4 L40 31 L8 30.6 Z", "M16 17 L22 17", "M16 22 L30 22.4"] },
-  book: { s: "M6 12 L24 16 L42 12 L42 38 L24 42 L6 38 Z", c: "sand", l: ["M6 12.4 C12 10 20 11 24 16 C28 11 36 10 42 12.4 L42 38 C36 36 28 37 24 42 C20 37 12 36 6 38 Z", "M24 16 L24 42"] },
-  paw: { s: "M14 32 C14 24 34 24 34 32 C34 40 14 40 14 32", c: "sand", l: ["M13.6 32.4 C13 23 35 23.6 34.4 32 C34 40 14 40 13.6 32.4", "M8 22 a3 4 0 1 0 6 0 a3 4 0 1 0 -6 0", "M17 12 a3 4.4 0 1 0 6 0 a3 4.4 0 1 0 -6 0", "M26 12 a3 4.4 0 1 0 6 0 a3 4.4 0 1 0 -6 0", "M34 22 a3 4 0 1 0 6 0 a3 4 0 1 0 -6 0"] },
-  box: { s: "M8 18 L40 18 L40 40 L8 40 Z", c: "sand", l: ["M7.6 17.6 L40.4 18.2 L40 40.4 L8 40 Z", "M5 10 L43 10.4 L40.4 18 L7.6 17.6 Z", "M20 24 L28 24"] },
-  wrench: { s: "M10 38 L28 20 L32 24 L14 42 Z", c: "sage", l: ["M9 38.4 L27 20.4", "M30 8 C24 8 21 14 24 19 L36 31 C39 34 44 32 42 26 L38 28 L33 23 L36 18 L40 18 C40 12 36 8 30 8", "M9 38 a3 3 0 1 0 6 0 a3 3 0 1 0 -6 0"] },
-  queue: { s: "M6 36 L42 36 L42 40 L6 40 Z", c: "sage", l: ["M9 14 a4 4 0 1 0 8 0 a4 4 0 1 0 -8 0", "M20 14 a4 4 0 1 0 8 0 a4 4 0 1 0 -8 0", "M31 14 a4 4 0 1 0 8 0 a4 4 0 1 0 -8 0", "M8 36 C8 24 18 24 18 36", "M19 36 C19 24 29 24 29 36", "M30 36 C30 24 40 24 40 36"] },
-  ball: { s: "M7 24 a17 17 0 1 0 34 0 a17 17 0 1 0 -34 0", c: "sand", l: ["M7 24 a17 17 0 1 0 34.2 0.4 a17 17 0 1 0 -34.2 -0.4", "M24 7 C18 14 18 34 24 41", "M7 24 C16 24 32 24 41 24", "M12 11 C16 16 16 32 12 37"] },
-  gamepad: { s: "M6 18 L42 18 L40 34 L6 34 Z", c: "sage", l: ["M10 15 C4 15 3 36 9 36 C14 36 15 31 18 31 L30 31 C33 31 34 36 39 36 C45 36 44 15 38 15 Z", "M14 21 L14 27", "M11 24 L17 24", "M32 22 L32.4 22.4", "M36 26 L36.4 26.4"] },
-  clock: { s: "M7 24 a17 17 0 1 0 34 0 a17 17 0 1 0 -34 0", c: "sage", l: ["M7 24 a17 17 0 1 0 34.2 0.4 a17 17 0 1 0 -34.2 -0.4", "M24 13 L24 24.4 L32 29"] },
-  shield: { s: "M9 10 L24 6 L39 10 L38 26 C36 34 30 38 24 42 C18 38 12 34 10 26 Z", c: "sage", l: ["M8.6 10 L24 5.6 L39.4 10 L38.4 26 C36 34 30 38 24 42.4 C18 38 12 34 9.6 26 Z", "M16 24 L22 30 L33 17"] },
-  stamp: { s: "M8 34 L40 34 L40 41 L8 41 Z", c: "sand", l: ["M8 34.4 L40 34 L40.4 41 L7.6 41.4 Z", "M18 34 C18 28 22 28 21 22 C20 16 28 16 27 22 C26 28 30 28 30 34", "M10 44 L38 44"] },
-  check: { s: "M6 24 a18 18 0 1 0 36 0 a18 18 0 1 0 -36 0", c: "sage", l: ["M6 24 a18 18 0 1 0 36.4 0.4 a18 18 0 1 0 -36.4 -0.4", "M14 25 L21 32 L34 16"] },
-  tower: { s: "M12 8 L34 8 L34 42 L12 42 Z", c: "sand", l: ["M11.6 7.6 L34.4 8.4 L34 42.4 L12 42 Z", "M17 14 L21 14", "M25 14 L29 14", "M17 22 L21 22", "M25 22 L29 22", "M17 30 L21 30", "M25 30 L29 30", "M21 42 L21 36 L26 36 L26 42"] },
-  door: { s: "M12 6 L34 6 L34 42 L12 42 Z", c: "sand", l: ["M11.6 5.6 L34.4 6.4 L34 42.4 L12 42 Z", "M28 25 L28.4 25.4", "M6 42.4 L42 42"] },
-  pin: { s: "M24 42 C14 30 12 24 12 19 C12 5 36 5 36 19 C36 24 34 30 24 42", c: "sand", l: ["M24 42.4 C14 30 11.6 24 12 19 C12.4 5 35.6 5 36 19 C36.4 24 34 30 24 42.4", "M19 19 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0"] },
-  heart: { s: "M24 40 C10 30 6 22 8 15 C11 7 21 8 24 15 C27 8 37 7 40 15 C42 22 38 30 24 40", c: "sand", l: ["M24 40.4 C9 30 5.6 22 8 14.6 C11 6.6 21 7.6 24 14.6 C27 7.6 37 6.6 40 14.6 C42.4 22 39 30 24 40.4"] },
-  chat: { s: "M6 10 L42 10 L42 32 L22 32 L12 41 L12 32 L6 32 Z", c: "sage", l: ["M5.6 9.6 L42.4 10.4 L42 32.4 L22 32 L12.4 41 L12 32.4 L6 32 Z", "M14 18 L34 18.4", "M14 24 L28 24"] },
-  rupee: { s: "M7 24 a17 17 0 1 0 34 0 a17 17 0 1 0 -34 0", c: "sand", l: ["M7 24 a17 17 0 1 0 34.2 0.4 a17 17 0 1 0 -34.2 -0.4", "M16 15 L32 15.4", "M16 21 L32 21.2", "M17 15 C28 15 28 26 17 26 L30 36"] },
-  camera: { s: "M5 16 L43 16 L43 38 L5 38 Z", c: "sage", l: ["M4.6 15.6 L16 15.8 L19 10 L29 10.4 L32 16 L43.4 16.4 L43 38.4 L5 38 Z", "M16 27 a8 8 0 1 0 16 0 a8 8 0 1 0 -16 0"] },
-  mic: { s: "M18 6 L30 6 L30 26 C30 34 18 34 18 26 Z", c: "sage", l: ["M18 6.4 C18 2 30 2 30 6.4 L30 25 C30 34 18 34 18 25 Z", "M11 22 C11 38 37 38 37 22", "M24 36 L24.4 43", "M17 43.4 L31 43"] },
-  calendar: { s: "M6 12 L42 12 L42 40 L6 40 Z", c: "sand", l: ["M5.6 11.6 L42.4 12.4 L42 40.4 L6 40 Z", "M6 20 L42 20.4", "M15 6 L15 14", "M33 6 L33.4 14", "M14 27 L18 27", "M22 27 L26 27", "M30 27 L34 27"] },
-  bell: { s: "M12 32 C12 20 14 10 24 10 C34 10 36 20 36 32 Z", c: "sand", l: ["M10 34 C13 30 13 24 13 20 C13 12 18 8 24 8 C30 8 35 12 35 20 C35 24 35 30 38 34 Z", "M20 38 C21 43 27 43 28 38"] },
-  lift: { s: "M10 6 L38 6 L38 42 L10 42 Z", c: "sage", l: ["M9.6 5.6 L38.4 6.4 L38 42.4 L10 42 Z", "M24 6 L24 42", "M14 18 L17 13 L20 18", "M28 30 L31 35 L34 30"] },
-  star: { s: "M24 6 L29 18 L42 19 L32 28 L35 41 L24 34 L13 41 L16 28 L6 19 L19 18 Z", c: "sand", l: ["M24 5.6 L29.4 18 L42.4 18.8 L32.4 28 L35.4 41 L24 34.4 L12.6 41 L15.6 28 L5.6 19 L18.6 18 Z"] },
-  eye: { s: "M5 24 C12 12 36 12 43 24 C36 36 12 36 5 24", c: "sage", l: ["M4.6 24 C12 11 36 11 43.4 24 C36 37 12 37 4.6 24", "M19 24 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0"] },
-  map: { s: "M6 12 L18 8 L30 12 L42 8 L42 36 L30 40 L18 36 L6 40 Z", c: "sage", l: ["M5.6 12.4 L18 8 L30 12.4 L42.4 8 L42 36.4 L30 40.4 L18 36 L6 40.4 Z", "M18 8 L18 36", "M30 12.4 L30.4 40"] },
-};
+export type IconName = keyof typeof ICONS;
+export const ICON_NAMES = Object.keys(ICONS) as IconName[];
 
-export const ICON_IDS = Object.keys(ICONS);
-
-export function Icon({ name, size = 40, spot = true, ...rest }: { name: string; size?: number; spot?: boolean } & SVGProps<SVGSVGElement>) {
-  const d = ICONS[name] ?? ICONS.home;
-  const fill = d.c === "sage" ? "#8EB69B" : "#E8C48A";
+export function Icon({
+  name,
+  size = 40,
+  tone = "sand",
+  className,
+  title,
+}: {
+  name: IconName | string;
+  size?: number;
+  tone?: "sand" | "sage" | "none";
+  className?: string;
+  title?: string;
+}) {
+  const d = (ICONS as Record<string, string>)[name] ?? ICONS.box;
+  const spot = "M" + d.split("M")[1];
+  const fill = tone === "sage" ? "var(--color-sage)" : "var(--color-sand)";
   return (
-    <svg viewBox="0 0 48 48" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...rest}>
-      {spot && d.s ? <path d={d.s} fill={fill} stroke="none" opacity={0.85} transform="translate(2 2)" /> : null}
-      {d.l.map((p, i) => (
-        <path key={i} d={p} />
-      ))}
+    <svg
+      viewBox="0 0 48 48"
+      width={size}
+      height={size}
+      fill="none"
+      className={className}
+      role={title ? "img" : undefined}
+      aria-label={title}
+      aria-hidden={title ? undefined : true}
+    >
+      {tone !== "none" && <path d={spot} fill={fill} opacity="0.75" transform="translate(2.5 2.5)" />}
+      <g filter="url(#wobble)" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d={d} />
+      </g>
     </svg>
+  );
+}
+
+/** Shared SVG filters: hand wobble for icons, ink-bleed for stamps. Rendered once in the root layout. */
+export function SvgDefs() {
+  return (
+    <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden>
+      <defs>
+        <filter id="wobble" x="-5%" y="-5%" width="110%" height="110%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="4" result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" />
+        </filter>
+        <filter id="ink" x="-10%" y="-10%" width="120%" height="120%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="9" result="t" />
+          <feDisplacementMap in="SourceGraphic" in2="t" scale="1.8" result="d" />
+          <feGaussianBlur in="d" stdDeviation="0.25" />
+        </filter>
+      </defs>
+    </svg>
+  );
+}
+
+/** The SHELL wordmark: rounded lettering, the counter of the S drawn as a small shell spiral. */
+export function Wordmark({ size = 28, className = "" }: { size?: number; className?: string }) {
+  return (
+    <span className={`inline-flex items-center gap-1 ${className}`} aria-label="SHELL">
+      <svg viewBox="0 0 40 40" width={size} height={size} aria-hidden>
+        <circle cx="20" cy="20" r="18" fill="var(--color-sand)" />
+        <path
+          d="M20 20 m0 0 c0 -3 4 -3 4 0 c0 5 -8 5 -8 -1 c0 -8 12 -8 12 1 c0 10 -16 10 -16 -2"
+          fill="none"
+          stroke="var(--color-tide)"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+        />
+      </svg>
+      <span className="display text-[1.35em] leading-none tracking-tight" style={{ fontSize: size * 0.9 }}>
+        SHELL
+      </span>
+    </span>
   );
 }
