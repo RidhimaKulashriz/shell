@@ -1,0 +1,9 @@
+import { Hero, Section, H2 } from "@/components/page";
+export const metadata = { title: "About", description: "Why Shell exists and how we make money." };
+export default function Page() {
+  return (<><Hero eyebrow="About" title="We started Shell because getting things done shouldn't be a second job." lead="We kept watching friends spend their weekends chasing cleaners, vendors and delivery calls. The problem wasn't a shortage of people. It was that nobody took responsibility for the result." />
+    <Section tone="white"><div className="grid gap-10 md:grid-cols-2"><div><H2 className="text-tide">What we believe</H2><ul className="mt-4 space-y-3 text-ink/80"><li><strong>Comfort:</strong> you should get your time back.</li><li><strong>Connection:</strong> someone capable is right around the corner.</li><li><strong>Opportunity:</strong> anyone with a useful skill can earn.</li></ul></div>
+      <div><H2 className="text-tide">How we make money</H2><p className="mt-4 text-ink/80">Helpers keep about 80% of each task price. We earn the rest, plus a platform fee and, on bigger plans, a coordination fee. Later we&apos;ll add a subscription and plans for societies and offices. We don&apos;t sell your data.</p></div></div></Section>
+    <Section tone="cream"><H2 className="text-tide">Roadmap</H2><ol className="mt-8 grid gap-4 md:grid-cols-4">{[["Now", "One society in Delhi"], ["Next", "More towers and societies nearby"], ["Then", "Routines and Shell Plus"], ["Later", "Hostels, offices and more cities"]].map(([a, b]) => <li key={a} className="border-t-2 border-tide pt-3"><div className="text-xs font-bold uppercase tracking-wider text-euca">{a}</div><p className="mt-1 font-semibold">{b}</p></li>)}</ol>
+      <p className="mt-10 max-w-2xl text-xl text-tide" style={{ fontFamily: "var(--font-hand)" }}>A note from the founders: we&apos;ll earn your trust one finished job at a time.</p></Section></>);
+}
