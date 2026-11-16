@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import {
   MapPin,
   Search,
@@ -19,54 +20,111 @@ import {
   Smartphone,
   PackageCheck,
   ChevronDown,
+  LayoutGrid,
+  ShoppingBag,
   Sparkles,
+  Utensils,
+  ShoppingBasket,
+  Package,
+  FolderKanban,
+  PartyPopper,
+  Users,
+  FileSpreadsheet,
+  BookOpen,
+  Dog,
+  Truck,
+  Wrench,
+  Trophy,
+  Milk,
+  Wheat,
+  Egg,
+  Apple,
+  Coffee,
+  Droplets,
+  Home as HomeIcon,
+  User,
+  KeyRound,
+  Tag,
 } from "lucide-react";
 import { LiveMap, type MapMarker } from "@/components/LiveMap";
 import {
   CATEGORIES,
   LOCATION_PRESETS,
+  SERVICE_PACKS,
   STORE_ITEMS,
   type CatalogItem,
   type CategoryId,
   type LocationPreset,
 } from "@/lib/store-catalog";
 
-type PaymentMethod = "gpay" | "wallet" | "card" | "cod";
+type PaymentMethod = "upi" | "wallet" | "card" | "cash_after";
 
 interface OrderRecord {
   id: string;
-  items: { item: CatalogItem; qty: number }[];
+  items: { name: string; qty: number; price: number }[];
   total: number;
   paymentMethod: PaymentMethod;
   locationName: string;
+  slot: string;
+  doorOtp: string;
   coords: [number, number];
   etaMins: number;
   helperName: string;
   helperRating: number;
-  status: "confirmed" | "assigned" | "ontheway";
-  createdAt: string;
+  status: "confirmed" | "assigned" | "en_route";
+}
+
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string; strokeWidth?: number }>> = {
+  LayoutGrid,
+  ShoppingBag,
+  Sparkles,
+  Utensils,
+  ShoppingBasket,
+  Package,
+  FolderKanban,
+  PartyPopper,
+  Users,
+  FileSpreadsheet,
+  BookOpen,
+  Dog,
+  Truck,
+  Wrench,
+  Clock,
+  Trophy,
+  Milk,
+  Wheat,
+  Egg,
+  Apple,
+  Coffee,
+  Droplets,
+};
+
+function RenderIcon({ name, className = "h-5 w-5" }: { name: string; className?: string }) {
+  const IconComp = ICON_MAP[name] ?? Sparkles;
+  return <IconComp className={className} strokeWidth={1.75} />;
 }
 
 export function ShellStorefront() {
   const [selectedCategory, setSelectedCategory] = useState<CategoryId>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [cart, setCart] = useState<Record<string, number>>({});
+  const [cart, setCart] = useState<Record<string, { name: string; price: number; unit: string; qty: number }>>({});
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isOrdersOpen, setIsOrdersOpen] = useState(false);
 
-  const [activeLocation, setActiveLocation] = useState<LocationPreset>(
-    LOCATION_PRESETS[0]
-  );
+  const [activeLocation, setActiveLocation] = useState<LocationPreset>(LOCATION_PRESETS[0]);
   const [customCoords, setCustomCoords] = useState<[number, number]>([
     LOCATION_PRESETS[0].lat,
     LOCATION_PRESETS[0].lng,
   ]);
-  const [customLabel, setCustomLabel] = useState<string>(
-    LOCATION_PRESETS[0].name
-  );
+  const [customLabel, setCustomLabel] = useState<string>(LOCATION_PRESETS[0].name);
 
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("gpay");
+  // 3-step checkout state
+  const [selectedSlot, setSelectedSlot] = useState("Today, 4:00 PM - 5:00 PM");
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [couponError, setCouponError] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("upi");
   const [isPaying, setIsPaying] = useState(false);
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [activeOrder, setActiveOrder] = useState<OrderRecord | null>(null);
@@ -74,8 +132,7 @@ export function ShellStorefront() {
   const filteredItems = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return STORE_ITEMS.filter((item) => {
-      const matchesCat =
-        selectedCategory === "all" || item.category === selectedCategory;
+      const matchesCat = selectedCategory === "all" || item.category === selectedCategory;
       const matchesSearch =
         !q ||
         item.name.toLowerCase().includes(q) ||
@@ -85,49 +142,41 @@ export function ShellStorefront() {
     });
   }, [selectedCategory, searchQuery]);
 
-  const goodsList = useMemo(
-    () => filteredItems.filter((i) => i.kind === "good"),
-    [filteredItems]
-  );
-  const servicesList = useMemo(
-    () => filteredItems.filter((i) => i.kind === "service"),
-    [filteredItems]
-  );
+  const goodsList = useMemo(() => filteredItems.filter((i) => i.kind === "good"), [filteredItems]);
+  const servicesList = useMemo(() => filteredItems.filter((i) => i.kind === "service"), [filteredItems]);
 
-  const cartItems = useMemo(() => {
-    return Object.entries(cart)
-      .filter(([, qty]) => qty > 0)
-      .map(([id, qty]) => ({
-        item: STORE_ITEMS.find((i) => i.id === id)!,
-        qty,
-      }))
-      .filter((entry) => Boolean(entry.item));
-  }, [cart]);
+  const cartEntries = useMemo(() => Object.entries(cart).filter(([, v]) => v.qty > 0), [cart]);
+  const cartCount = useMemo(() => cartEntries.reduce((sum, [, v]) => sum + v.qty, 0), [cartEntries]);
+  const itemSubtotal = useMemo(() => cartEntries.reduce((sum, [, v]) => sum + v.price * v.qty, 0), [cartEntries]);
+  const platformFee = itemSubtotal > 0 ? Math.max(19, Math.round(itemSubtotal * 0.04)) : 0;
+  const discount = appliedCoupon ? Math.min(appliedCoupon.discount, itemSubtotal) : 0;
+  const grandTotal = Math.max(0, itemSubtotal - discount + platformFee);
 
-  const cartCount = useMemo(
-    () => cartItems.reduce((sum, entry) => sum + entry.qty, 0),
-    [cartItems]
-  );
-
-  const itemSubtotal = useMemo(
-    () =>
-      cartItems.reduce((sum, entry) => sum + entry.item.price * entry.qty, 0),
-    [cartItems]
-  );
-
-  const deliveryFee = itemSubtotal > 0 && itemSubtotal < 199 ? 25 : 0;
-  const grandTotal = itemSubtotal + deliveryFee;
-
-  const updateQty = (id: string, delta: number) => {
+  const updateItemQty = (id: string, name: string, price: number, unit: string, delta: number) => {
     setCart((prev) => {
-      const next = (prev[id] ?? 0) + delta;
+      const current = prev[id]?.qty ?? 0;
+      const next = current + delta;
       if (next <= 0) {
         const copy = { ...prev };
         delete copy[id];
         return copy;
       }
-      return { ...prev, [id]: next };
+      return { ...prev, [id]: { name, price, unit, qty: next } };
     });
+  };
+
+  const handleApplyCoupon = () => {
+    const code = couponCode.trim().toUpperCase();
+    setCouponError("");
+    if (code === "WELCOME100") {
+      setAppliedCoupon({ code, discount: 100 });
+    } else if (code === "FIRST50") {
+      setAppliedCoupon({ code, discount: 50 });
+    } else if (code === "WEEKEND15") {
+      setAppliedCoupon({ code, discount: Math.round(itemSubtotal * 0.15) });
+    } else {
+      setCouponError("Invalid code. Try WELCOME100, FIRST50, or WEEKEND15.");
+    }
   };
 
   const handleSelectPreset = (preset: LocationPreset) => {
@@ -138,9 +187,7 @@ export function ShellStorefront() {
 
   const handleMapClick = (lat: number, lng: number) => {
     setCustomCoords([lat, lng]);
-    setCustomLabel(
-      `Pinned Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`
-    );
+    setCustomLabel(`Pinned (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
   };
 
   const mapMarkers: MapMarker[] = useMemo(() => {
@@ -151,15 +198,15 @@ export function ShellStorefront() {
         lat,
         lng,
         title: customLabel,
-        subtitle: `Delivery & Service Pin • ${activeLocation.etaMins} mins ETA`,
+        subtitle: `Service available · ${activeLocation.etaMins} mins ETA`,
         type: "user",
       },
       {
         id: "hub-1",
         lat: lat + 0.0055,
         lng: lng - 0.0045,
-        title: "Shell Dark Store & Hub",
-        subtitle: "Fresh groceries & essentials stocked",
+        title: "Dwarka Sector 12 Hub",
+        subtitle: "Groceries & essentials dispatch",
         type: "hub",
       },
       {
@@ -167,127 +214,114 @@ export function ShellStorefront() {
         lat: lat - 0.0032,
         lng: lng + 0.0041,
         title: "Isha Kapoor (Verified Helper)",
-        subtitle: "★ 4.94 • Cleaning & Home Care • 4 mins away",
+        subtitle: "4.94 rating · Home Cleaning · 4 mins away",
         type: "helper",
       },
       {
         id: "helper-2",
         lat: lat + 0.0028,
         lng: lng + 0.0062,
-        title: "Rajesh Kumar (Electrician & AC)",
-        subtitle: "★ 4.91 • 6 mins away",
-        type: "helper",
-      },
-      {
-        id: "helper-3",
-        lat: lat - 0.0048,
-        lng: lng - 0.0038,
-        title: "Amit Verma (Express Rider)",
-        subtitle: "★ 4.89 • 10-min grocery delivery",
+        title: "Rajesh Kumar (Verified Helper)",
+        subtitle: "4.91 rating · Small Repairs · 6 mins away",
         type: "helper",
       },
     ];
   }, [customCoords, customLabel, activeLocation.etaMins]);
 
   const handlePlaceOrder = () => {
-    if (cartItems.length === 0) return;
+    if (cartEntries.length === 0) return;
     setIsPaying(true);
 
     setTimeout(() => {
       const newOrder: OrderRecord = {
         id: `SHL-${Math.floor(100000 + Math.random() * 900000)}`,
-        items: cartItems,
+        items: cartEntries.map(([, v]) => ({ name: v.name, qty: v.qty, price: v.price })),
         total: grandTotal,
         paymentMethod,
         locationName: customLabel,
+        slot: selectedSlot,
+        doorOtp: String(Math.floor(1000 + Math.random() * 9000)),
         coords: customCoords,
         etaMins: activeLocation.etaMins,
         helperName: "Isha Kapoor",
         helperRating: 4.94,
-        status: "ontheway",
-        createdAt: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
+        status: "en_route",
       };
 
       setOrders((prev) => [newOrder, ...prev]);
       setActiveOrder(newOrder);
       setCart({});
+      setAppliedCoupon(null);
+      setCouponCode("");
       setIsPaying(false);
       setIsCartOpen(false);
       setIsOrdersOpen(true);
-    }, 900);
+    }, 600);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      {/* STICKY TOP NAVBAR (Blinkit + Urban Company style) */}
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-6">
-          {/* Brand + Location */}
+    <div className="min-h-screen bg-[#F7F8F6] text-[#0E1A17]">
+      {/* STICKY HEADER */}
+      <header className="sticky top-0 z-40 border-b border-[#E3E8E4] bg-white">
+        <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-6">
           <div className="flex items-center gap-4">
-            <a
-              href="/"
-              className="flex items-center gap-2 text-2xl font-extrabold tracking-tight text-[#0B2B26]"
-            >
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0B2B26] text-lg font-black text-[#F2C318]">
+            <Link href="/" className="flex items-center gap-2 text-xl font-bold text-[#0B2B26]">
+              <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#0B2B26] text-base font-bold text-[#F2C318]">
                 S
               </span>
               <span>Shell</span>
-            </a>
+            </Link>
 
             <button
               type="button"
               onClick={() => setIsLocationModalOpen(true)}
-              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-left transition hover:border-emerald-500 hover:bg-emerald-50/40"
+              className="flex min-h-[44px] items-center gap-2 rounded-[10px] border border-[#E3E8E4] bg-[#F7F8F6] px-3 py-1.5 text-left transition hover:border-[#0B2B26]"
             >
-              <MapPin className="h-4 w-4 shrink-0 text-emerald-700" />
+              <MapPin className="h-4 w-4 shrink-0 text-[#0B2B26]" strokeWidth={1.75} />
               <div className="leading-tight">
-                <div className="flex items-center gap-1 text-xs font-bold text-slate-900">
-                  <span>Delivery in {activeLocation.etaMins} mins</span>
-                  <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
+                <div className="flex items-center gap-1 text-xs font-semibold text-[#0E1A17]">
+                  <span>Dwarka · {activeLocation.etaMins} mins</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-[#4B5A55]" strokeWidth={1.75} />
                 </div>
-                <div className="max-w-[160px] truncate text-[11px] text-slate-500 sm:max-w-[220px]">
+                <div className="max-w-[160px] truncate text-[11px] text-[#4B5A55] sm:max-w-[220px]">
                   {customLabel}
                 </div>
               </div>
             </button>
           </div>
 
-          {/* Search Bar */}
           <div className="order-3 w-full md:order-2 md:max-w-md md:flex-1">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7C8A85]" strokeWidth={1.75} />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search 'milk', 'AC repair', 'cleaning', 'electrician'..."
-                className="w-full rounded-xl border border-slate-200 bg-slate-100/80 py-2.5 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/15"
+                aria-label="Search services and groceries"
+                placeholder="Search cleaning, groceries, repairs, errands..."
+                className="min-h-[44px] w-full rounded-[10px] border border-[#E3E8E4] bg-[#F7F8F6] py-2 pl-10 pr-4 text-sm text-[#0E1A17] placeholder:text-[#7C8A85] focus:border-[#0B2B26] focus:bg-white focus:outline-none"
               />
             </div>
           </div>
 
-          {/* Right Actions: Map, Orders, Cart */}
           <div className="order-2 flex items-center gap-2 md:order-3">
             <a
               href="#live-map"
-              className="hidden items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 sm:inline-flex"
+              className="hidden min-h-[44px] items-center gap-1.5 rounded-[10px] border border-[#E3E8E4] bg-white px-3 py-2 text-xs font-semibold text-[#0E1A17] transition hover:bg-[#EEF6F0] sm:inline-flex"
             >
-              <Navigation className="h-3.5 w-3.5 text-emerald-700" />
-              Live Map
+              <Navigation className="h-4 w-4 text-[#0B2B26]" strokeWidth={1.75} />
+              Explore map
             </a>
 
             <button
               type="button"
               onClick={() => setIsOrdersOpen(true)}
-              className="relative inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="relative inline-flex min-h-[44px] items-center gap-1.5 rounded-[10px] border border-[#E3E8E4] bg-white px-3 py-2 text-xs font-semibold text-[#0E1A17] transition hover:bg-[#EEF6F0]"
             >
-              <PackageCheck className="h-4 w-4 text-emerald-700" />
+              <PackageCheck className="h-4 w-4 text-[#0B2B26]" strokeWidth={1.75} />
               <span className="hidden sm:inline">Orders</span>
               {orders.length > 0 && (
-                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-bold text-white">
+                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-[#1E8E5A] px-1 text-[10px] font-bold text-white">
                   {orders.length}
                 </span>
               )}
@@ -296,12 +330,12 @@ export function ShellStorefront() {
             <button
               type="button"
               onClick={() => setIsCartOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#0B2B26] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#163832]"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-[10px] bg-[#0B2B26] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#163832]"
             >
-              <ShoppingCart className="h-4 w-4 text-[#F2C318]" />
+              <ShoppingCart className="h-4 w-4 text-[#F2C318]" strokeWidth={1.75} />
               {cartCount > 0 ? (
                 <span>
-                  {cartCount} {cartCount === 1 ? "item" : "items"} · ₹{grandTotal}
+                  {cartCount} · Rs {grandTotal}
                 </span>
               ) : (
                 <span>Cart</span>
@@ -311,89 +345,72 @@ export function ShellStorefront() {
         </div>
       </header>
 
-      {/* HERO BANNER */}
-      <section className="mx-auto max-w-7xl px-4 pt-5 md:px-6">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0B2B26] via-[#133C35] to-[#051F20] p-6 text-white shadow-lg md:p-10">
-          <div className="grid items-center gap-6 md:grid-cols-[1.3fr_1fr]">
-            <div>
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-[#F2C318] backdrop-blur">
-                <Sparkles className="h-3.5 w-3.5" />
-                Live in {activeLocation.area} · No Waitlist
-              </div>
-              <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl md:text-5xl">
-                Daily groceries &amp; verified home services in{" "}
-                <span className="text-[#F2C318]">
-                  {activeLocation.etaMins} mins
-                </span>
-                .
-              </h1>
-              <p className="mt-3 max-w-xl text-sm text-emerald-100/90 sm:text-base">
-                Order fresh milk, fruits, and essentials or book background-verified
-                electricians, cleaners, and salon pros — all in one cart with
-                instant UPI &amp; live GPS tracking.
-              </p>
-              <div className="mt-5 flex flex-wrap gap-3">
-                <a
-                  href="#catalog"
-                  className="rounded-xl bg-[#F2C318] px-5 py-2.5 text-sm font-bold text-[#051F20] shadow-sm transition hover:bg-yellow-300"
-                >
-                  Shop Goods &amp; Services
-                </a>
-                <a
-                  href="#live-map"
-                  className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/20"
-                >
-                  <MapPin className="h-4 w-4 text-[#F2C318]" />
-                  View Live Map
-                </a>
-              </div>
+      {/* HERO STRIP (Clean, high-trust, no gradients/blobs) */}
+      <section className="border-b border-[#E3E8E4] bg-[#EEF6F0]">
+        <div className="mx-auto flex max-w-[1200px] flex-col justify-between gap-6 px-4 py-8 md:flex-row md:items-center md:px-6">
+          <div className="max-w-xl">
+            <h1 className="text-2xl font-bold tracking-tight text-[#0E1A17] sm:text-3xl md:text-4xl">
+              Get comfortable. We&apos;ve got it.
+            </h1>
+            <p className="mt-2 text-sm text-[#4B5A55] sm:text-base">
+              Book in under a minute. Verified people. Pay only when the job is done.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <a
+                href="#catalog"
+                className="inline-flex min-h-[44px] items-center rounded-[10px] bg-[#0B2B26] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#163832]"
+              >
+                Book a service
+              </a>
+              <a
+                href="#packs"
+                className="inline-flex min-h-[44px] items-center rounded-[10px] border border-[#E3E8E4] bg-white px-5 py-2.5 text-sm font-semibold text-[#0E1A17] transition hover:bg-[#F7F8F6]"
+              >
+                View service packs
+              </a>
             </div>
+          </div>
 
-            {/* Quick Stats / Trust Strip */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
-                <div className="text-2xl font-extrabold text-[#F2C318]">
-                  10–12m
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-2">
+            {[
+              { label: "Verified helpers", icon: ShieldCheck },
+              { label: "Door OTP", icon: KeyRound },
+              { label: "24h free rework", icon: CheckCircle2 },
+              { label: "Pay after approval", icon: Wallet },
+            ].map((item) => {
+              const IconComp = item.icon;
+              return (
+                <div
+                  key={item.label}
+                  className="flex items-center gap-2.5 rounded-[12px] border border-[#E3E8E4] bg-white px-3.5 py-3 text-xs font-semibold text-[#0E1A17]"
+                >
+                  <IconComp className="h-4 w-4 shrink-0 text-[#1E8E5A]" strokeWidth={1.75} />
+                  <span>{item.label}</span>
                 </div>
-                <div className="mt-1 text-xs text-emerald-100">
-                  Express grocery delivery from nearby dark stores
-                </div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
-                <div className="text-2xl font-extrabold text-[#F2C318]">
-                  100%
-                </div>
-                <div className="mt-1 text-xs text-emerald-100">
-                  ID-verified helpers &amp; 30-day service warranty
-                </div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
-                <div className="text-2xl font-extrabold text-[#F2C318]">
-                  ★ 4.9
-                </div>
-                <div className="mt-1 text-xs text-emerald-100">
-                  Average rating across 45,000+ completed jobs
-                </div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
-                <div className="text-2xl font-extrabold text-[#F2C318]">
-                  ₹0 Fee
-                </div>
-                <div className="mt-1 text-xs text-emerald-100">
-                  Free delivery &amp; zero convenience fee above ₹199
-                </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* CATEGORY FILTER PILLS */}
-      <section
-        id="catalog"
-        className="mx-auto max-w-7xl px-4 pt-6 md:px-6"
-      >
-        <div className="flex items-center gap-2 overflow-x-auto pb-2">
+      {/* CATEGORY GRID (15 Services + Groceries) */}
+      <section id="catalog" className="mx-auto max-w-[1200px] px-4 pt-8 md:px-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-[#0E1A17] sm:text-xl">
+            Browse by category
+          </h2>
+          {selectedCategory !== "all" && (
+            <button
+              type="button"
+              onClick={() => setSelectedCategory("all")}
+              className="text-xs font-semibold text-[#0B2B26] underline"
+            >
+              Show all
+            </button>
+          )}
+        </div>
+
+        <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-2">
           {CATEGORIES.map((cat) => {
             const active = selectedCategory === cat.id;
             return (
@@ -401,13 +418,13 @@ export function ShellStorefront() {
                 key={cat.id}
                 type="button"
                 onClick={() => setSelectedCategory(cat.id)}
-                className={`inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
+                className={`inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-[10px] border px-3.5 py-2 text-xs font-semibold transition ${
                   active
-                    ? "bg-[#0B2B26] text-white shadow-sm"
-                    : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+                    ? "border-[#0B2B26] bg-[#0B2B26] text-white"
+                    : "border-[#E3E8E4] bg-white text-[#4B5A55] hover:border-[#0B2B26] hover:text-[#0E1A17]"
                 }`}
               >
-                <span>{cat.emoji}</span>
+                <RenderIcon name={cat.iconName} className="h-4 w-4" />
                 <span>{cat.label}</span>
               </button>
             );
@@ -415,111 +432,230 @@ export function ShellStorefront() {
         </div>
       </section>
 
-      {/* REAL GOODS SECTION (Blinkit Style) */}
-      {goodsList.length > 0 && (
-        <section className="mx-auto max-w-7xl px-4 pt-6 md:px-6">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-extrabold text-slate-900 sm:text-2xl">
-                Fresh Groceries &amp; Daily Essentials
-              </h2>
-              <p className="text-xs text-slate-500 sm:text-sm">
-                Delivered in 10–12 minutes from your nearest Shell Hub
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:gap-4">
-            {goodsList.map((item) => (
-              <ItemCard
-                key={item.id}
-                item={item}
-                qty={cart[item.id] ?? 0}
-                onAdd={() => updateQty(item.id, 1)}
-                onRemove={() => updateQty(item.id, -1)}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* REAL HOME SERVICES SECTION (Urban Company Style) */}
+      {/* SERVICES LISTING */}
       {servicesList.length > 0 && (
-        <section className="mx-auto max-w-7xl px-4 pt-10 md:px-6">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-extrabold text-slate-900 sm:text-2xl">
-                Verified Home Services &amp; Repairs
-              </h2>
-              <p className="text-xs text-slate-500 sm:text-sm">
-                Transparent pricing · Background-verified professionals
-              </p>
-            </div>
+        <section className="mx-auto max-w-[1200px] px-4 pt-8 md:px-6">
+          <div className="mb-4">
+            <h2 className="text-lg font-bold text-[#0E1A17] sm:text-xl">
+              Home services &amp; errands
+            </h2>
+            <p className="text-xs text-[#4B5A55] sm:text-sm">
+              Transparent INR pricing · Verified helpers in Dwarka
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {servicesList.map((item) => (
               <ItemCard
                 key={item.id}
                 item={item}
-                qty={cart[item.id] ?? 0}
-                onAdd={() => updateQty(item.id, 1)}
-                onRemove={() => updateQty(item.id, -1)}
+                qty={cart[item.id]?.qty ?? 0}
+                onAdd={() => updateItemQty(item.id, item.name, item.price, item.unit, 1)}
+                onRemove={() => updateItemQty(item.id, item.name, item.price, item.unit, -1)}
               />
             ))}
           </div>
         </section>
       )}
 
-      {filteredItems.length === 0 && (
-        <div className="mx-auto max-w-7xl px-4 py-16 text-center md:px-6">
-          <p className="text-lg font-semibold text-slate-700">
-            No goods or services matched &ldquo;{searchQuery}&rdquo;.
+      {/* GROCERIES LISTING */}
+      {goodsList.length > 0 && (
+        <section className="mx-auto max-w-[1200px] px-4 pt-10 md:px-6">
+          <div className="mb-4">
+            <h2 className="text-lg font-bold text-[#0E1A17] sm:text-xl">
+              Groceries &amp; daily essentials
+            </h2>
+            <p className="text-xs text-[#4B5A55] sm:text-sm">
+              Delivered from your nearest Dwarka store
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            {goodsList.map((item) => (
+              <ItemCard
+                key={item.id}
+                item={item}
+                qty={cart[item.id]?.qty ?? 0}
+                onAdd={() => updateItemQty(item.id, item.name, item.price, item.unit, 1)}
+                onRemove={() => updateItemQty(item.id, item.name, item.price, item.unit, -1)}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* PACKS CAROUSEL */}
+      <section id="packs" className="mx-auto max-w-[1200px] px-4 pt-10 md:px-6">
+        <div className="mb-4">
+          <h2 className="text-lg font-bold text-[#0E1A17] sm:text-xl">
+            Service packs (bundle &amp; save)
+          </h2>
+          <p className="text-xs text-[#4B5A55] sm:text-sm">
+            Common combinations booked together at a bundle price
           </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {SERVICE_PACKS.map((pack) => {
+            const qty = cart[pack.id]?.qty ?? 0;
+            return (
+              <div
+                key={pack.id}
+                className="flex flex-col justify-between rounded-[12px] border border-[#E3E8E4] bg-white p-4"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="rounded-[6px] bg-[#EEF6F0] px-2 py-0.5 text-[11px] font-semibold text-[#0B2B26]">
+                      {pack.duration}
+                    </span>
+                    <span className="text-xs font-semibold text-[#1E8E5A]">
+                      Save Rs {pack.originalPrice - pack.packPrice}
+                    </span>
+                  </div>
+                  <h3 className="mt-2.5 text-base font-bold text-[#0E1A17]">
+                    {pack.name}
+                  </h3>
+                  <p className="mt-1 text-xs text-[#4B5A55]">{pack.description}</p>
+                  <ul className="mt-3 space-y-1 text-xs text-[#4B5A55]">
+                    {pack.services.map((s) => (
+                      <li key={s} className="flex items-center gap-1.5">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-[#1E8E5A]" strokeWidth={1.75} />
+                        <span>{s}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between border-t border-[#E3E8E4] pt-3">
+                  <div>
+                    <span className="text-base font-bold text-[#0E1A17]">
+                      Rs {pack.packPrice}
+                    </span>
+                    <span className="ml-1.5 text-xs text-[#7C8A85] line-through">
+                      Rs {pack.originalPrice}
+                    </span>
+                  </div>
+
+                  {qty === 0 ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateItemQty(pack.id, pack.name, pack.packPrice, pack.duration, 1)
+                      }
+                      className="min-h-[44px] rounded-[10px] border border-[#0B2B26] bg-[#EEF6F0] px-4 py-2 text-xs font-semibold text-[#0B2B26] transition hover:bg-[#0B2B26] hover:text-white"
+                    >
+                      Add pack
+                    </button>
+                  ) : (
+                    <div className="flex min-h-[44px] items-center gap-2 rounded-[10px] bg-[#0B2B26] px-3 py-1.5 text-white">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateItemQty(pack.id, pack.name, pack.packPrice, pack.duration, -1)
+                        }
+                        aria-label="Decrease quantity"
+                      >
+                        <Minus className="h-4 w-4" strokeWidth={1.75} />
+                      </button>
+                      <span className="min-w-4 text-center text-xs font-bold">{qty}</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateItemQty(pack.id, pack.name, pack.packPrice, pack.duration, 1)
+                        }
+                        aria-label="Increase quantity"
+                      >
+                        <Plus className="h-4 w-4" strokeWidth={1.75} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* OFFERS BANNER */}
+      <section className="mx-auto max-w-[1200px] px-4 pt-10 md:px-6">
+        <div className="flex flex-col items-start justify-between gap-4 rounded-[12px] border border-[#E3E8E4] bg-[#EEF6F0] p-5 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-3">
+            <Tag className="h-5 w-5 text-[#0B2B26]" strokeWidth={1.75} />
+            <div>
+              <div className="text-sm font-bold text-[#0E1A17]">
+                Use code <span className="font-mono">WELCOME100</span> for Rs 100 off your first booking
+              </div>
+              <div className="text-xs text-[#4B5A55]">
+                Also active: FIRST50 (Rs 50 off) and WEEKEND15 (15% off)
+              </div>
+            </div>
+          </div>
           <button
             type="button"
             onClick={() => {
-              setSearchQuery("");
-              setSelectedCategory("all");
+              setCouponCode("WELCOME100");
+              setIsCartOpen(true);
             }}
-            className="mt-3 rounded-xl bg-[#0B2B26] px-4 py-2 text-sm font-semibold text-white"
+            className="min-h-[44px] rounded-[10px] bg-[#0B2B26] px-4 py-2 text-xs font-semibold text-white hover:bg-[#163832]"
           >
-            Reset Filters
+            Apply in cart
           </button>
         </div>
-      )}
+      </section>
 
-      {/* REAL INTERACTIVE MAP SECTION */}
-      <section
-        id="live-map"
-        className="mx-auto max-w-7xl px-4 pb-16 pt-12 md:px-6"
-      >
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-8">
-          <div className="mb-5 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+      {/* HOW IT WORKS (3 PLAIN STEPS) */}
+      <section className="mx-auto max-w-[1200px] px-4 pt-10 md:px-6">
+        <h2 className="text-lg font-bold text-[#0E1A17] sm:text-xl">
+          How Shell works
+        </h2>
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          {[
+            {
+              step: "1. Choose a service",
+              desc: "Pick home cleaning, errands, repairs, or groceries with upfront INR pricing.",
+            },
+            {
+              step: "2. Pick slot & address",
+              desc: "Select your Dwarka society tower, gate instructions, and preferred time slot.",
+            },
+            {
+              step: "3. Pay after approval",
+              desc: "Share the door OTP to start. Pay via UPI, card, or cash once the job is done.",
+            },
+          ].map((s) => (
+            <div
+              key={s.step}
+              className="rounded-[12px] border border-[#E3E8E4] bg-white p-4"
+            >
+              <div className="text-sm font-bold text-[#0B2B26]">{s.step}</div>
+              <p className="mt-1 text-xs text-[#4B5A55]">{s.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* LIVE INTERACTIVE MAP */}
+      <section id="live-map" className="mx-auto max-w-[1200px] px-4 pb-12 pt-10 md:px-6">
+        <div className="rounded-[12px] border border-[#E3E8E4] bg-white p-5">
+          <div className="mb-4 flex flex-col justify-between gap-3 md:flex-row md:items-end">
             <div>
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800">
-                <Navigation className="h-3.5 w-3.5" />
-                Live GPS &amp; Helper Map
-              </div>
-              <h2 className="mt-2 text-2xl font-extrabold text-slate-900">
-                See your location &amp; nearby helpers in real time
+              <h2 className="text-lg font-bold text-[#0E1A17] sm:text-xl">
+                Service area &amp; live helper map (Dwarka, Delhi)
               </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Click anywhere on the map to move your delivery pin, or tap any
-                marker to see helper ratings and hub distance.
+              <p className="mt-1 text-xs text-[#4B5A55] sm:text-sm">
+                Click anywhere on the map to set your delivery pin and check nearby helpers.
               </p>
             </div>
-
             <div className="flex flex-wrap gap-2">
-              {LOCATION_PRESETS.slice(0, 3).map((preset) => (
+              {LOCATION_PRESETS.map((preset) => (
                 <button
                   key={preset.id}
                   type="button"
                   onClick={() => handleSelectPreset(preset)}
-                  className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
+                  className={`min-h-[36px] rounded-[10px] border px-3 py-1.5 text-xs font-semibold transition ${
                     activeLocation.id === preset.id
-                      ? "bg-[#0B2B26] text-white"
-                      : "border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
+                      ? "border-[#0B2B26] bg-[#0B2B26] text-white"
+                      : "border-[#E3E8E4] bg-[#F7F8F6] text-[#4B5A55] hover:border-[#0B2B26]"
                   }`}
                 >
                   {preset.name.split(",")[0]}
@@ -532,83 +668,78 @@ export function ShellStorefront() {
             center={customCoords}
             markers={mapMarkers}
             onLocationSelect={handleMapClick}
-            height="420px"
+            height="360px"
           />
-
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
-            <div className="flex flex-wrap items-center gap-4">
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block h-3 w-3 rounded-full bg-[#0B2B26]" />
-                Your Pin ({customLabel})
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block h-3 w-3 rounded-full bg-[#F2C318] ring-1 ring-[#051F20]" />
-                Verified Helpers Nearby
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block h-3 w-3 rounded-full bg-emerald-500" />
-                Shell Dark Store Hub
-              </span>
-            </div>
-            <div className="font-semibold text-emerald-700">
-              Estimated arrival: {activeLocation.etaMins} mins
-            </div>
-          </div>
         </div>
       </section>
 
-      {/* FLOATING BOTTOM CART BAR ON MOBILE */}
-      {cartCount > 0 && !isCartOpen && (
-        <div className="fixed bottom-4 left-4 right-4 z-30 mx-auto max-w-md md:hidden">
-          <button
-            type="button"
-            onClick={() => setIsCartOpen(true)}
-            className="flex w-full items-center justify-between rounded-2xl bg-[#0B2B26] px-5 py-3.5 text-white shadow-xl"
-          >
-            <div className="text-left">
-              <div className="text-xs font-medium text-emerald-200">
-                {cartCount} {cartCount === 1 ? "ITEM" : "ITEMS"}
-              </div>
-              <div className="text-base font-extrabold">₹{grandTotal}</div>
-            </div>
-            <div className="flex items-center gap-1.5 rounded-xl bg-[#F2C318] px-4 py-2 text-sm font-bold text-[#051F20]">
-              View Cart &amp; Pay
-            </div>
-          </button>
-        </div>
-      )}
+      {/* MOBILE BOTTOM TAB BAR */}
+      <nav
+        aria-label="Mobile navigation"
+        className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-[#E3E8E4] bg-white py-1.5 md:hidden"
+      >
+        <a href="#" className="flex min-h-[44px] flex-col items-center justify-center text-[11px] font-semibold text-[#0B2B26]">
+          <HomeIcon className="h-5 w-5" strokeWidth={1.75} />
+          <span>Home</span>
+        </a>
+        <a href="#catalog" className="flex min-h-[44px] flex-col items-center justify-center text-[11px] font-medium text-[#4B5A55]">
+          <LayoutGrid className="h-5 w-5" strokeWidth={1.75} />
+          <span>Services</span>
+        </a>
+        <button
+          type="button"
+          onClick={() => setIsOrdersOpen(true)}
+          className="flex min-h-[44px] flex-col items-center justify-center text-[11px] font-medium text-[#4B5A55]"
+        >
+          <PackageCheck className="h-5 w-5" strokeWidth={1.75} />
+          <span>Orders</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsCartOpen(true)}
+          className="relative flex min-h-[44px] flex-col items-center justify-center text-[11px] font-medium text-[#4B5A55]"
+        >
+          <ShoppingCart className="h-5 w-5" strokeWidth={1.75} />
+          <span>Cart {cartCount > 0 ? `(${cartCount})` : ""}</span>
+        </button>
+        <Link href="/app" className="flex min-h-[44px] flex-col items-center justify-center text-[11px] font-medium text-[#4B5A55]">
+          <User className="h-5 w-5" strokeWidth={1.75} />
+          <span>Account</span>
+        </Link>
+      </nav>
 
-      {/* LOCATION PICKER MODAL */}
+      {/* LOCATION MODAL */}
       {isLocationModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-              <h3 className="text-lg font-extrabold text-slate-900">
-                Select Delivery &amp; Service Location
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-2xl overflow-hidden rounded-[12px] bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-[#E3E8E4] px-5 py-4">
+              <h3 className="text-base font-bold text-[#0E1A17]">
+                Select delivery &amp; service location
               </h3>
               <button
                 type="button"
                 onClick={() => setIsLocationModalOpen(false)}
-                className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                className="rounded-[10px] p-1.5 text-[#4B5A55] hover:bg-[#F7F8F6]"
+                aria-label="Close location modal"
               >
-                <X className="h-5 w-5" />
+                <X className="h-5 w-5" strokeWidth={1.75} />
               </button>
             </div>
-            <div className="p-6">
+            <div className="p-5">
               <div className="mb-4 flex flex-wrap gap-2">
                 {LOCATION_PRESETS.map((preset) => (
                   <button
                     key={preset.id}
                     type="button"
                     onClick={() => handleSelectPreset(preset)}
-                    className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+                    className={`rounded-[10px] border px-3 py-2 text-left text-xs font-semibold ${
                       activeLocation.id === preset.id
-                        ? "border-emerald-600 bg-emerald-50 text-emerald-900"
-                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                        ? "border-[#0B2B26] bg-[#EEF6F0] text-[#0B2B26]"
+                        : "border-[#E3E8E4] bg-white text-[#4B5A55]"
                     }`}
                   >
                     <div>{preset.name}</div>
-                    <div className="text-[11px] font-normal text-slate-500">
+                    <div className="text-[11px] font-normal">
                       {preset.etaMins} mins ETA
                     </div>
                   </button>
@@ -618,15 +749,15 @@ export function ShellStorefront() {
                 center={customCoords}
                 markers={mapMarkers}
                 onLocationSelect={handleMapClick}
-                height="280px"
+                height="260px"
               />
               <div className="mt-4 flex justify-end">
                 <button
                   type="button"
                   onClick={() => setIsLocationModalOpen(false)}
-                  className="rounded-xl bg-[#0B2B26] px-6 py-2.5 text-sm font-bold text-white hover:bg-[#163832]"
+                  className="min-h-[44px] rounded-[10px] bg-[#0B2B26] px-6 py-2 text-sm font-semibold text-white hover:bg-[#163832]"
                 >
-                  Confirm Location
+                  Confirm location
                 </button>
               </div>
             </div>
@@ -634,134 +765,162 @@ export function ShellStorefront() {
         </div>
       )}
 
-      {/* SLIDE-OVER CART & GPAY CHECKOUT DRAWER */}
+      {/* CART & 3-STEP CHECKOUT DRAWER */}
       {isCartOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-sm">
-          <div className="flex h-full w-full max-w-md flex-col bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/50">
+          <div className="flex h-full w-full max-w-md flex-col bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-[#E3E8E4] px-5 py-4">
               <div>
-                <h3 className="text-lg font-extrabold text-slate-900">
-                  Your Cart
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Delivery to {customLabel}
-                </p>
+                <h3 className="text-base font-bold text-[#0E1A17]">Your cart</h3>
+                <p className="text-xs text-[#4B5A55]">{customLabel}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsCartOpen(false)}
-                className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                className="rounded-[10px] p-1.5 text-[#4B5A55] hover:bg-[#F7F8F6]"
+                aria-label="Close cart"
               >
-                <X className="h-5 w-5" />
+                <X className="h-5 w-5" strokeWidth={1.75} />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5">
-              {cartItems.length === 0 ? (
+            <div className="flex-1 space-y-4 overflow-y-auto p-5">
+              {cartEntries.length === 0 ? (
                 <div className="py-16 text-center">
-                  <ShoppingCart className="mx-auto h-12 w-12 text-slate-300" />
-                  <p className="mt-3 text-base font-bold text-slate-700">
+                  <ShoppingCart className="mx-auto h-10 w-10 text-[#7C8A85]" strokeWidth={1.75} />
+                  <p className="mt-3 text-sm font-semibold text-[#0E1A17]">
                     Your cart is empty
                   </p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Add groceries or home services to get started.
+                  <p className="mt-1 text-xs text-[#4B5A55]">
+                    Add a service or grocery item to book.
                   </p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {/* Items */}
-                  <div className="space-y-3">
-                    {cartItems.map(({ item, qty }) => (
+                <>
+                  <div className="space-y-2.5">
+                    {cartEntries.map(([id, entry]) => (
                       <div
-                        key={item.id}
-                        className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3"
+                        key={id}
+                        className="flex items-center justify-between gap-3 rounded-[12px] border border-[#E3E8E4] bg-[#F7F8F6] p-3"
                       >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl ${item.accentBg}`}
-                          >
-                            {item.emoji}
+                        <div>
+                          <div className="text-sm font-semibold text-[#0E1A17]">
+                            {entry.name}
                           </div>
-                          <div>
-                            <div className="text-sm font-bold text-slate-900">
-                              {item.name}
-                            </div>
-                            <div className="text-xs text-slate-500">
-                              {item.unit} · ₹{item.price}
-                            </div>
+                          <div className="text-xs text-[#4B5A55]">
+                            {entry.unit} · Rs {entry.price}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 rounded-xl border border-emerald-600 bg-emerald-50 px-2 py-1 text-emerald-900">
+                        <div className="flex items-center gap-2 rounded-[10px] border border-[#0B2B26] bg-white px-2.5 py-1 text-[#0B2B26]">
                           <button
                             type="button"
-                            onClick={() => updateQty(item.id, -1)}
-                            className="p-0.5 hover:text-emerald-700"
+                            onClick={() =>
+                              updateItemQty(id, entry.name, entry.price, entry.unit, -1)
+                            }
+                            aria-label="Decrease quantity"
                           >
-                            <Minus className="h-3.5 w-3.5" />
+                            <Minus className="h-3.5 w-3.5" strokeWidth={1.75} />
                           </button>
                           <span className="min-w-4 text-center text-xs font-bold">
-                            {qty}
+                            {entry.qty}
                           </span>
                           <button
                             type="button"
-                            onClick={() => updateQty(item.id, 1)}
-                            className="p-0.5 hover:text-emerald-700"
+                            onClick={() =>
+                              updateItemQty(id, entry.name, entry.price, entry.unit, 1)
+                            }
+                            aria-label="Increase quantity"
                           >
-                            <Plus className="h-3.5 w-3.5" />
+                            <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />
                           </button>
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  {/* Bill Details */}
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm">
-                    <div className="font-bold text-slate-900">Bill Details</div>
-                    <div className="mt-2 space-y-1.5 text-slate-600">
+                  {/* Step 2: Date & Time Slot */}
+                  <div>
+                    <label className="block text-xs font-semibold text-[#0E1A17]">
+                      Select time slot
+                    </label>
+                    <select
+                      value={selectedSlot}
+                      onChange={(e) => setSelectedSlot(e.target.value)}
+                      className="mt-1.5 min-h-[44px] w-full rounded-[10px] border border-[#E3E8E4] bg-white px-3 text-sm text-[#0E1A17]"
+                    >
+                      <option>Today, 4:00 PM - 5:00 PM</option>
+                      <option>Today, 5:00 PM - 6:00 PM</option>
+                      <option>Tomorrow, 9:00 AM - 10:00 AM</option>
+                      <option>Tomorrow, 11:00 AM - 12:00 PM</option>
+                    </select>
+                  </div>
+
+                  {/* Coupon */}
+                  <div>
+                    <label className="block text-xs font-semibold text-[#0E1A17]">
+                      Coupon code
+                    </label>
+                    <div className="mt-1.5 flex gap-2">
+                      <input
+                        type="text"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        placeholder="WELCOME100"
+                        className="min-h-[44px] flex-1 rounded-[10px] border border-[#E3E8E4] px-3 text-sm uppercase"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyCoupon}
+                        className="min-h-[44px] rounded-[10px] border border-[#0B2B26] px-4 text-xs font-semibold text-[#0B2B26] hover:bg-[#EEF6F0]"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                    {couponError && (
+                      <p className="mt-1 text-xs text-[#C2362B]">{couponError}</p>
+                    )}
+                    {appliedCoupon && (
+                      <p className="mt-1 text-xs font-semibold text-[#1E8E5A]">
+                        {appliedCoupon.code} applied (-Rs {discount})
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Price Breakdown */}
+                  <div className="rounded-[12px] border border-[#E3E8E4] bg-white p-4 text-sm">
+                    <div className="space-y-1.5 text-[#4B5A55]">
                       <div className="flex justify-between">
-                        <span>Item Total</span>
-                        <span>₹{itemSubtotal}</span>
+                        <span>Subtotal</span>
+                        <span>Rs {itemSubtotal}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Delivery &amp; Convenience</span>
-                        <span className={deliveryFee === 0 ? "font-semibold text-emerald-700" : ""}>
-                          {deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}
-                        </span>
+                        <span>Platform fee</span>
+                        <span>Rs {platformFee}</span>
                       </div>
-                      <div className="flex justify-between border-t border-slate-100 pt-2 text-base font-extrabold text-slate-900">
-                        <span>To Pay</span>
-                        <span>₹{grandTotal}</span>
+                      {discount > 0 && (
+                        <div className="flex justify-between text-[#1E8E5A]">
+                          <span>Coupon discount</span>
+                          <span>-Rs {discount}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between border-t border-[#E3E8E4] pt-2 text-base font-bold text-[#0E1A17]">
+                        <span>Total</span>
+                        <span>Rs {grandTotal}</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* GPay-style Payment Selector */}
+                  {/* Step 3: Payment */}
                   <div>
-                    <div className="mb-2 text-sm font-bold text-slate-900">
-                      Pay Using (GPay / UPI / Wallet)
+                    <div className="mb-2 text-xs font-semibold text-[#0E1A17]">
+                      Payment method
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       {[
-                        {
-                          id: "gpay" as PaymentMethod,
-                          label: "Google Pay / UPI",
-                          icon: Smartphone,
-                        },
-                        {
-                          id: "wallet" as PaymentMethod,
-                          label: "Shell Wallet (₹1,500)",
-                          icon: Wallet,
-                        },
-                        {
-                          id: "card" as PaymentMethod,
-                          label: "Credit / Debit Card",
-                          icon: CreditCard,
-                        },
-                        {
-                          id: "cod" as PaymentMethod,
-                          label: "Cash on Delivery",
-                          icon: Banknote,
-                        },
+                        { id: "upi" as PaymentMethod, label: "UPI", icon: Smartphone },
+                        { id: "cash_after" as PaymentMethod, label: "Cash after service", icon: Banknote },
+                        { id: "card" as PaymentMethod, label: "Card / Netbanking", icon: CreditCard },
+                        { id: "wallet" as PaymentMethod, label: "Shell Wallet", icon: Wallet },
                       ].map((pm) => {
                         const IconComp = pm.icon;
                         const active = paymentMethod === pm.id;
@@ -770,36 +929,32 @@ export function ShellStorefront() {
                             key={pm.id}
                             type="button"
                             onClick={() => setPaymentMethod(pm.id)}
-                            className={`flex items-center gap-2 rounded-xl border p-3 text-left text-xs font-semibold transition ${
+                            className={`flex min-h-[44px] items-center gap-2 rounded-[10px] border p-2.5 text-left text-xs font-semibold ${
                               active
-                                ? "border-emerald-600 bg-emerald-50 text-emerald-900"
-                                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                                ? "border-[#0B2B26] bg-[#EEF6F0] text-[#0B2B26]"
+                                : "border-[#E3E8E4] bg-white text-[#4B5A55]"
                             }`}
                           >
-                            <IconComp className="h-4 w-4 shrink-0" />
+                            <IconComp className="h-4 w-4 shrink-0" strokeWidth={1.75} />
                             <span>{pm.label}</span>
                           </button>
                         );
                       })}
                     </div>
                   </div>
-                </div>
+                </>
               )}
             </div>
 
-            {cartItems.length > 0 && (
-              <div className="border-t border-slate-100 p-5">
+            {cartEntries.length > 0 && (
+              <div className="border-t border-[#E3E8E4] p-5">
                 <button
                   type="button"
                   disabled={isPaying}
                   onClick={handlePlaceOrder}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0B2B26] py-3.5 text-base font-bold text-white shadow-lg transition hover:bg-[#163832] disabled:opacity-60"
+                  className="min-h-[48px] w-full rounded-[10px] bg-[#0B2B26] text-sm font-semibold text-white transition hover:bg-[#163832] disabled:opacity-60"
                 >
-                  {isPaying ? (
-                    <span>Processing Payment...</span>
-                  ) : (
-                    <span>Pay ₹{grandTotal} &amp; Place Order</span>
-                  )}
+                  {isPaying ? "Confirming booking..." : `Book now · Rs ${grandTotal}`}
                 </button>
               </div>
             )}
@@ -807,35 +962,41 @@ export function ShellStorefront() {
         </div>
       )}
 
-      {/* LIVE ORDER TRACKER MODAL */}
+      {/* ORDER TRACKING MODAL */}
       {isOrdersOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-              <h3 className="text-lg font-extrabold text-slate-900">
-                {activeOrder ? `Tracking Order ${activeOrder.id}` : "My Orders"}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[12px] bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-[#E3E8E4] px-5 py-4">
+              <h3 className="text-base font-bold text-[#0E1A17]">
+                {activeOrder ? `Order ${activeOrder.id}` : "Your orders"}
               </h3>
               <button
                 type="button"
                 onClick={() => setIsOrdersOpen(false)}
-                className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                className="rounded-[10px] p-1.5 text-[#4B5A55] hover:bg-[#F7F8F6]"
+                aria-label="Close orders"
               >
-                <X className="h-5 w-5" />
+                <X className="h-5 w-5" strokeWidth={1.75} />
               </button>
             </div>
-
-            <div className="p-6">
+            <div className="p-5">
               {activeOrder ? (
-                <div className="space-y-5">
-                  <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 p-4 text-emerald-950">
-                    <CheckCircle2 className="h-8 w-8 shrink-0 text-emerald-600" />
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between rounded-[12px] bg-[#EEF6F0] p-4">
                     <div>
-                      <div className="text-base font-extrabold">
-                        Order Confirmed! Arriving in {activeOrder.etaMins} mins
+                      <div className="text-sm font-bold text-[#0B2B26]">
+                        Helper assigned: {activeOrder.helperName} ({activeOrder.helperRating} rating)
                       </div>
-                      <div className="text-xs text-emerald-800">
-                        {activeOrder.helperName} (★ {activeOrder.helperRating})
-                        is on the way to {activeOrder.locationName}
+                      <div className="mt-0.5 text-xs text-[#4B5A55]">
+                        Slot: {activeOrder.slot} · ETA {activeOrder.etaMins} mins
+                      </div>
+                    </div>
+                    <div className="rounded-[10px] bg-[#0B2B26] px-3 py-2 text-center text-white">
+                      <div className="text-[10px] uppercase tracking-wider text-[#8EB69B]">
+                        Door OTP
+                      </div>
+                      <div className="font-mono text-lg font-bold text-[#F2C318]">
+                        {activeOrder.doorOtp}
                       </div>
                     </div>
                   </div>
@@ -847,7 +1008,7 @@ export function ShellStorefront() {
                         id: "order-dest",
                         lat: activeOrder.coords[0],
                         lng: activeOrder.coords[1],
-                        title: "Your Location",
+                        title: "Your address",
                         type: "user",
                       },
                       {
@@ -855,7 +1016,7 @@ export function ShellStorefront() {
                         lat: activeOrder.coords[0] - 0.0028,
                         lng: activeOrder.coords[1] + 0.0035,
                         title: activeOrder.helperName,
-                        subtitle: "On the way to you",
+                        subtitle: "On the way",
                         type: "helper",
                       },
                     ]}
@@ -865,27 +1026,10 @@ export function ShellStorefront() {
                     ]}
                     height="240px"
                   />
-
-                  <div className="rounded-2xl border border-slate-200 p-4 text-sm">
-                    <div className="font-bold text-slate-900">
-                      Order Summary · ₹{activeOrder.total}
-                    </div>
-                    <ul className="mt-2 space-y-1 text-slate-600">
-                      {activeOrder.items.map(({ item, qty }) => (
-                        <li key={item.id} className="flex justify-between">
-                          <span>
-                            {qty} × {item.name}
-                          </span>
-                          <span>₹{item.price * qty}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
                 </div>
               ) : (
-                <div className="py-12 text-center text-slate-500">
-                  No orders yet. Add items from the store to place your first
-                  instant order!
+                <div className="py-12 text-center text-sm text-[#4B5A55]">
+                  No orders yet. Add a service or grocery item to book.
                 </div>
               )}
             </div>
@@ -908,50 +1052,41 @@ function ItemCard({
   onRemove: () => void;
 }) {
   return (
-    <div className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-sm transition hover:border-emerald-500/50 hover:shadow-md">
+    <div className="flex flex-col justify-between rounded-[12px] border border-[#E3E8E4] bg-white p-4 transition hover:border-[#0B2B26]">
       <div>
-        <div
-          className={`relative flex h-28 items-center justify-center rounded-xl text-5xl ${item.accentBg}`}
-        >
-          <span>{item.emoji}</span>
-          {item.badge && (
-            <span className="absolute left-2 top-2 rounded-md bg-[#0B2B26] px-2 py-0.5 text-[10px] font-bold text-[#F2C318]">
-              {item.badge}
-            </span>
-          )}
-          <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-md bg-white/90 px-1.5 py-0.5 text-[10px] font-bold text-slate-700 shadow-sm">
-            <Clock className="h-3 w-3 text-emerald-600" />
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex h-11 w-11 items-center justify-center rounded-[10px] bg-[#EEF6F0] text-[#0B2B26]">
+            <RenderIcon name={item.iconName} className="h-5 w-5" />
+          </div>
+          <span className="inline-flex items-center gap-1 rounded-[6px] bg-[#F7F8F6] px-2 py-1 text-[11px] font-medium text-[#4B5A55]">
+            <Clock className="h-3 w-3 text-[#1E8E5A]" strokeWidth={1.75} />
             {item.eta}
           </span>
         </div>
 
         <div className="mt-3">
-          <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-500">
-            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-            <span className="text-slate-700">{item.rating}</span>
+          <div className="flex items-center gap-1 text-[11px] font-medium text-[#4B5A55]">
+            <Star className="h-3 w-3 fill-[#F2C318] text-[#F2C318]" />
+            <span className="font-semibold text-[#0E1A17]">{item.rating}</span>
             <span>({item.reviews})</span>
             <span>·</span>
             <span>{item.unit}</span>
           </div>
-          <h3 className="mt-1 line-clamp-2 text-sm font-bold leading-snug text-slate-900">
+          <h3 className="mt-1 line-clamp-2 text-sm font-bold text-[#0E1A17]">
             {item.name}
           </h3>
-          {item.kind === "service" && (
-            <p className="mt-1 line-clamp-2 text-xs text-slate-500">
-              {item.description}
-            </p>
-          )}
+          <p className="mt-1 line-clamp-2 text-xs text-[#4B5A55]">
+            {item.description}
+          </p>
         </div>
       </div>
 
-      <div className="mt-3 flex items-center justify-between pt-2">
+      <div className="mt-4 flex items-center justify-between border-t border-[#E3E8E4] pt-3">
         <div>
-          <span className="text-base font-extrabold text-slate-900">
-            ₹{item.price}
-          </span>
+          <span className="text-sm font-bold text-[#0E1A17]">Rs {item.price}</span>
           {item.mrp && (
-            <span className="ml-1.5 text-xs text-slate-400 line-through">
-              ₹{item.mrp}
+            <span className="ml-1.5 text-xs text-[#7C8A85] line-through">
+              Rs {item.mrp}
             </span>
           )}
         </div>
@@ -960,26 +1095,18 @@ function ItemCard({
           <button
             type="button"
             onClick={onAdd}
-            className="rounded-xl border border-emerald-600 bg-emerald-50 px-3.5 py-1.5 text-xs font-extrabold text-emerald-800 transition hover:bg-emerald-600 hover:text-white"
+            className="min-h-[44px] rounded-[10px] border border-[#0B2B26] bg-[#EEF6F0] px-4 py-2 text-xs font-semibold text-[#0B2B26] transition hover:bg-[#0B2B26] hover:text-white"
           >
-            {item.kind === "service" ? "BOOK +" : "ADD +"}
+            Add to cart
           </button>
         ) : (
-          <div className="flex items-center gap-2 rounded-xl bg-[#0B2B26] px-2.5 py-1.5 text-white">
-            <button
-              type="button"
-              onClick={onRemove}
-              className="hover:text-[#F2C318]"
-            >
-              <Minus className="h-3.5 w-3.5" />
+          <div className="flex min-h-[44px] items-center gap-2 rounded-[10px] bg-[#0B2B26] px-3 py-1.5 text-white">
+            <button type="button" onClick={onRemove} aria-label="Decrease quantity">
+              <Minus className="h-4 w-4" strokeWidth={1.75} />
             </button>
             <span className="min-w-4 text-center text-xs font-bold">{qty}</span>
-            <button
-              type="button"
-              onClick={onAdd}
-              className="hover:text-[#F2C318]"
-            >
-              <Plus className="h-3.5 w-3.5" />
+            <button type="button" onClick={onAdd} aria-label="Increase quantity">
+              <Plus className="h-4 w-4" strokeWidth={1.75} />
             </button>
           </div>
         )}
