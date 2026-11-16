@@ -135,7 +135,7 @@ export const POST = api(async ({ req, user }) => {
     doorOtp: process.env.ALLOW_DEV_OTP === "true" ? otpPlain : undefined,
     status: row.status,
   });
-}, { roles: ["CUSTOMER"] });
+}, { roles: ["CUSTOMER"], limit: { key: "bookings", max: 10, windowMs: 60000 } });
 
 export const GET = api(async ({ user }) => {
   const rows = await db.select().from(bookings).where(eq(bookings.customerId, user!.id)).orderBy(desc(bookings.createdAt)).limit(50);

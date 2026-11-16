@@ -24,16 +24,13 @@ export const POST = api<{ id: string }>(async ({ req, params, user }) => {
     const upiString = buildUpiString({ amount: row.total, note: `Shell ${row.serviceName} ${row.id.slice(0, 8)}` });
     await db.update(bookings).set({ paymentMethod: "UPI", paymentStatus: "PENDING" }).where(eq(bookings.id, row.id));
     await db.insert(auditLogs).values({ actorId: user!.id, action: "payment_upi_pending", entity: "booking", entityId: row.id, before: { paymentStatus: row.paymentStatus }, after: { paymentMethod: "UPI", paymentStatus: "PENDING" } });
-    // non-blocking SMS (mock logs)
     sendSms(user!.phone ?? "", `Shell: Pay Rs ${row.total} for ${row.serviceName}. UPI: ${upiString.slice(0, 60)}…`).catch(() => {});
     return { ok: true, paymentStatus: "PENDING", paymentMethod: "UPI", upiString, message: "UPI pending — scan QR in your UPI app. Test webhook will mark PAID." };
   }
 
-  // RAZORPAY
   const order = createMockRazorpayOrder({ bookingId: row.id, amount: row.total });
   await db.update(bookings).set({ paymentMethod: "RAZORPAY", paymentStatus: "PENDING", razorpayOrderId: order.id }).where(eq(bookings.id, row.id));
   await db.insert(auditLogs).values({ actorId: user!.id, action: "payment_razorpay_order", entity: "booking", entityId: row.id, before: { paymentStatus: row.paymentStatus }, after: { paymentMethod: "RAZORPAY", paymentStatus: "PENDING", orderId: order.id } });
-  // also create a DB notification for customer (in-app)
   await db.insert(notifications).values({ userId: row.customerId, type: "payment_order", channel: "inapp", title: "Payment order created", body: `Razorpay order ${order.id} for Rs ${row.total} — ${row.serviceName}`, payload: { bookingId: row.id, orderId: order.id } }).catch(() => {});
   return { ok: true, paymentStatus: "PENDING", paymentMethod: "RAZORPAY", orderId: order.id, amount: order.amount, currency: order.currency, message: "Razorpay test order created. Call webhook to mark PAID." };
-});
+}, { roles: ["CUSTOMER"], limit: { key: "pay", max: 10, windowMs: 60000 } });

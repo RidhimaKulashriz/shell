@@ -1,109 +1,69 @@
 # SHELL: Get comfortable. We've got it.
 
-A managed personal life-assistant for Indian apartment societies, launching inside one society in Delhi.
-One message in English or Hindi becomes a plan, verified helpers, and one finished home.
-We don't help you find people. We take responsibility for getting it done.
+Dwarka pilot — Sectors 6/10/12 · 2h slots 8am–8pm · 4 bookable services · Door OTP + pay-after-approval.
 
-Stack: Next.js 16 (App Router) + TypeScript strict + Tailwind 4 + PostgreSQL via Drizzle ORM. No component library: the
-paper-and-shell design system (receipts, stamps, passport pages, sticky notes) is hand-built in `globals.css` and `src/components`.
+Real customer can: open on phone, login via phone OTP (30s resend), book (geo-fence Dwarka, 2h slots max 3/slot, server price), see orders with status chips, cancel only RECEIVED, pay UPI pending / Razorpay test webhook (idempotent), request rework within 24h. Helper: OTP login → /earn/portal → on the way → start with 4-digit door OTP (5 tries) → complete. Founder: /ops tabs all/RECEIVED/ASSIGNED/IN_PROGRESS/COMPLETED/CANCELLED, assign helper, status transitions, audit log, 403 for customers.
+
+Stack: Next.js 16 App Router + TypeScript strict + Tailwind 4 + Drizzle + Neon Postgres. No second backend. Design green #0B2B26, Inter, outline icons, English only.
 
 ## Run it
 
 ```bash
 npm install
-cp .env.example .env            # DATABASE_URL and APP_SECRET are the only required values
-npx drizzle-kit push --force    # create tables
+cp .env.example .env            # DATABASE_URL and APP_SECRET required; ALLOWDEV_OTP=false never set in production
+npx drizzle-kit push --force
 npm run dev                     # http://localhost:3000
 ```
 
-The first request against an empty database seeds the demo society (`src/db/seed.ts`):
-Green Meadows (6 towers, 2 gates), 12 helpers (10 active, 2 applicants), 20 task templates in 16 categories,
-7 packs, 3 guides, a live "Guests Are Coming" plan with jobs in motion, a Circle at 4 of 6 flats, a dispute, an SOS drill,
-fraud alerts, and 145 demo waitlist rows (flagged `demo`; set `SHOW_DEMO_DATA=false` to hide them from public counters).
-You can also run `npx tsx src/db/seed.ts` against an empty database.
+Seed creates societies, 12 helpers, 4 bookable services, promo codes, bookings slots. `SHOW_DEMO_DATA=false` hides demo waitlist.
 
-### Demo logins (OTP is always `123456` in mock mode)
+### Logins (mock OTP 123456, ALLOW_DEV_OTP=true shows devCode)
 
 | Who | Phone | Lands on |
-| --- | --- | --- |
-| Customer (Ananya) | 9999900001 | `/app` |
-| Ops lead | 9999900002 | `/ops` (log in at `/app/login`) |
-| Society partner | 9999900003 | `/society` |
-| Super admin | 9999900004 | `/ops` |
-| Helper (Rahul, Pro) | 9100000001 | `/earn/portal` (log in at `/earn/login`) |
+|---|---|---|
+| Customer | 9999900001 | `/app` → `/app/orders` |
+| Ops | 9999900002 | `/ops` (login at `/app/login`) |
+| Helper (Rahul) | 9100000001 | `/earn/portal` (login at `/earn/login`) |
 
 ## Tests
 
 ```bash
-npx vitest run                                              # 31 unit + integration tests
-E2E_BASE_URL=http://localhost:3000 npx playwright test      # API-level critical flow against a running app
+npm run typecheck        # tsc --noEmit
+npx vitest run           # 5 suites — pricing, circle, leakage, slots, Dwarka, webhook idempotency
+npm run build            # next build with security headers
+npx playwright test      # API flow: waitlist → request → plan → checkout → OTP → rework
+npm run validate         # typecheck + lint + vitest + build
 ```
-
-Unit tests cover the pricing engine (every formula branch), Circle curve, keyword demo engine, leakage scanner (digits,
-spelled-out English or Hindi, Devanagari numerals, UPI, handles), ETA, ledger balancing, state machine guards, dispatch scoring,
-notification catalogue and quiet hours, signature verification and door OTPs. The e2e covers: waitlist signup with OTP, then request,
-plan, idempotent checkout with signature check, geofenced check-in with door OTP, checklist, approval, review, and the chat scanner.
 
 ## Where things are
 
 ```
-src/app/(site)        public website (SSR, sitemap, JSON-LD, hreflang, OG images at /api/og)
-src/app/app           customer PWA (login, onboarding, composer, plan review, tracker, circle, wallet, ...)
-src/app/earn          Shell Earn: public pages in (site)/earn, helper portal in /earn/portal
-src/app/ops           Ops Cockpit (Cmd+K, g+key hotkeys, plan builder, dispatch, finance, pricing, audit)
-src/app/society       society partner portal
-src/app/api           REST routes, zod-validated, rate limited, CSRF checked, consistent error shape (en + hi)
-src/lib               pricing, keywords, leakage, eta, ledger, statemachine, geo/hex, dispatch, plan-engine, notify, money
-src/db                schema.ts (Drizzle), seed.ts, seed-data.ts
+src/app/(site)        public site (Home storefront, contact, legal, safety)
+src/app/app/(main)    customer PWA (orders, requests, profile)
+src/app/earn/portal   helper portal (jobs → on-the-way/OTP/complete)
+src/app/ops           ops cockpit (bookings tabs, assign, status, audit, finance)
+src/app/api           REST — zod, rateLimit 10/60s, CSRF, x-request-id, x-otp-failures
+src/lib               dwarka, slots, mvp-catalog, sms (SMS_PROVIDER mock|msg91), payments (razorpay mock), lease
+src/db                schema.ts (bookings + payments + reviews + audit), seed.ts
 ```
 
-## Signature features
+## Hardening (Step 10)
 
-Shell Receipt (components/ui.tsx, ink stamps, scalloped edge), Readiness Ring, Tell Shell composer (text, voice via the browser's
-speech recognition in hi-IN, photo with drawn circles), Home Atlas, Shell Pulse map (brand SVG), Shell Circle with a discount curve,
-Skill Passport (page-flip, QR, printable resume), Meet Your Helper card, Guardian (door OTP, gate pass, geofence, SOS with cancel
-countdown, silent SOS, shake to SOS), Time Machine slider, Shell Wrapped, Rush opt-in, Expense Wallet with itemised approval and
-auto refund, Shell Notes, neighbour karma, Ops Cockpit, 404 "Nobody's home", and a Konami-code easter egg.
+- **Rate limits:** `api()` wrapper + `limit: {key,max,windowMs}` on auth (20/10m), bookings (10/60s), pay (10/60s), contact (6/10m)
+- **Zod:** every POST/PATCH validated (`BodySchema` bookings, pay method, rework, ops assign/status)
+- **Headers:** `next.config.ts` → `X-Content-Type-Options nosniff`, `X-Frame-Options DENY`, `Referrer-Policy`, `Permissions-Policy`, `HSTS`, `CSP frame-ancestors none`
+- **DPDP:** `DELETE /api/me` soft (7-day cooling, audit) + `DELETE /api/me/data {confirm:DELETE}` hard anonymize (deletes addresses, bookings address, notifications, audit `data_hard_delete`)
+- **No fake data:** bookings/reviews/notify_requests honest empty; `ALLOW_DEV_OTP` gated
+- **CI:** `.github/workflows/ci.yml` — postgres 16, `drizzle-kit push`, `next typegen`, `tsc`, `vitest`, `next build`, `playwright` against `wait-on /api/health`
 
-## Environment variables
+## Env
 
-See `.env.example`. Everything external sits behind an interface with a working mock:
+See `.env.example` — all providers behind interfaces with mock defaults. Set `OTP_PROVIDER=msg91`, `RAZORPAY_*`, `SMS_PROVIDER=msg91` for live. Never commit `.env`.
 
-| Concern | Interface | Mock default | Live switch |
-| --- | --- | --- | --- |
-| OTP | `OtpProvider` (lib/auth.ts) | fixed `123456` | `OTP_PROVIDER=msg91`, `MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID` |
-| Payments | `PaymentProvider` (lib/money.ts) | HMAC-signed mock orders | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` |
-| WhatsApp / push | `ChannelProvider` (lib/notify.ts) | logs + in-app rows | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID` |
-| Plan drafting | `PlanLLM` (lib/plan-engine.ts) | offline keyword planner | `PLAN_LLM_PROVIDER` |
-| Maps | PulseMap props (components/maps.tsx) | brand SVG map | `MAP_PROVIDER=maplibre` |
-| KYC, telephony masking, speech-to-text | provider hooks | consent flag / info dialog / browser STT | `KYC_PROVIDER`, `TELEPHONY_PROVIDER`, `STT_PROVIDER` |
+## Vercel
 
-## Production runbook
-
-Vercel plus managed Postgres, or Docker on a VPS:
-
-```bash
-docker build -t shell . && docker run --env-file .env -p 3000:3000 shell
-```
-
-The container applies the Drizzle schema and starts the server. Set `NEXT_PUBLIC_SITE_URL`, a long random `APP_SECRET`, and `DATABASE_URL` in every non-local environment. `/api/health` is an unauthenticated readiness check and returns database dependency status, latency, runtime version, uptime, and a request ID without returning secrets. `/manus-routes.json` is the canonical page-route manifest used by platform tooling.
-
-The default configuration is intentionally safe for demos: OTP, payments, notifications, planning, and maps use local/mock adapters. Before opening the service to real users, set `OTP_PROVIDER=msg91` with its credentials, configure Razorpay keys and webhook verification, choose live notification and map providers, set `SHOW_DEMO_DATA=false`, and use `SESSION_COOKIE_SAMESITE=none` only when the app is served over HTTPS inside an embedded preview. Never commit `.env` or provider credentials.
-
-For a pre-push quality gate, run `npm run validate`. CI also provisions PostgreSQL, pushes the schema, builds the app, and runs the API-level Playwright flow. Put the Razorpay webhook at `/api/webhooks/razorpay` and keep `/api/health` as the container/load-balancer health path.
+`shell-frontend` project `main` is production. Push `main` → Vercel build. Required env: `DATABASE_URL`, `APP_SECRET`, `SESSION_COOKIE_SAMESITE=none` for HTTPS preview.
 
 ## Honest status
 
-See `ASSUMPTIONS.md` for what is real, what is mocked, and what is not built yet.
-
-## Design and language
-
-The interface is written in plain, professional English. The paper-and-shell system (receipts, stamps, passport pages) is kept, but
-quiet: straight cards, thin borders, soft shadows, a serif display face (Fraunces with the soft and wonk axes switched off) and Instrument
-Serif italic for emphasis. A Hindi (Devanagari) toggle is available in the header; there is no Hinglish interface copy.
-
-## Added in the latest pass
-
-- Ops CSV exports (`/api/ops/export/{ledger,payments,jobs,helpers,customers,waitlist}`), permission-gated, phone numbers masked, every export audit-logged.
-- Wallet top-up (idempotent, balanced `wallet_liability` journal) on the customer Wallet page.
-- GST tax invoice per order (`/app/orders/[id]/invoice`), CGST/SGST split, print to PDF.
+See `ASSUMPTIONS.md`. Legal pages are Draft v0.1 — require lawyer review.
