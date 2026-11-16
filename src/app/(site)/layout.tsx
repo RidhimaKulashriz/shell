@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { jsonLd, SITE_URL } from "@/lib/seo";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
+import { WhatsAppFab } from "@/components/site/WhatsAppFab";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
         {children}
       </main>
       <SiteFooter />
+      <WhatsAppFab lead="Hi Shell, I need help in Dwarka" />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLd({

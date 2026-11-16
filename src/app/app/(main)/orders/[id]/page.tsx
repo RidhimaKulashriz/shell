@@ -8,6 +8,7 @@ import { StatusChip } from "@/components/orders/StatusChip";
 import { CancelButton } from "@/components/orders/CancelButton";
 import { PaymentChip } from "@/components/payments/PaymentChip";
 import { PayActions } from "@/components/payments/PayActions";
+import { ReworkButton } from "@/components/orders/ReworkButton";
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser(["CUSTOMER"]);
@@ -51,6 +52,12 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             <p className="mt-1 text-xs text-[#4B5A55]">Share this with the helper at the door to start the job. 4-digit, 5 tries max, then locked.</p>
           </div>
         )}
+        <div className="mt-4">
+          <ReworkButton id={row.id} status={row.status} updatedAt={row.updatedAt.toISOString()} />
+        </div>
+        <div className="mt-2 rounded-[10px] border border-[#E3E8E4] bg-white p-3 text-xs text-[#4B5A55]">
+          <span className="font-semibold text-[#0B2B26]">Need help?</span> <a href="/contact" className="underline hover:text-[#0B2B26]">Contact us</a> · <a href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "919999900000"}`} target="_blank" rel="noopener noreferrer" className="underline hover:text-[#0B2B26]">WhatsApp</a> · <Link href="/legal/refund-cancellation" className="underline">Refund &amp; cancellation</Link> · <Link href="/legal/terms" className="underline">Terms</Link> · <Link href="/legal/privacy" className="underline">Privacy</Link>
+        </div>
         <div className="mt-6 flex flex-wrap gap-3">
           <CancelButton id={row.id} status={row.status} />
           <Link href="/app/orders" className="inline-flex min-h-[40px] items-center rounded-[10px] border border-[#E3E8E4] bg-white px-4 text-xs font-semibold text-[#4B5A55] hover:bg-[#F7F8F6]">Back</Link>
