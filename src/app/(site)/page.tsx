@@ -2,9 +2,9 @@ import { ShellStorefront } from "@/components/store/ShellStorefront";
 import { meta } from "@/lib/seo";
 
 export const metadata = meta({
-  title: "Shell | Groceries & Verified Home Services in 12 Mins",
+  title: "Shell | Verified Home Services in Dwarka — Scheduled Slots",
   description:
-    "Order fresh groceries, daily essentials, and background-verified home services in 12 minutes with live GPS tracking and instant UPI.",
+    "Book trusted, verified helpers for home services in Dwarka Sectors 6, 10, 12. Scheduled 2-hour slots, upfront INR pricing, door OTP and pay-after-approval.",
   path: "/",
 });
 

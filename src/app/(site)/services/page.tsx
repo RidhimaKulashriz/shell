@@ -1,33 +1,39 @@
-import Link from "next/link";
-import { Icon } from "@/components/Icon";
-import { LinkArrow, PageHero, Section } from "@/components/site/Bits";
 import { meta } from "@/lib/seo";
-import { categoryList } from "@/lib/site-data";
-import { getLang, pick } from "@/lib/lang";
-import { inr } from "@/lib/format";
+import { MVP_SERVICES, COMING_SOON_SERVICES } from "@/lib/mvp-catalog";
+import { ServiceGrid } from "./ServiceGrid";
 
-export const metadata = meta({ title: "Services", description: "Shell Quick for single tasks, Shell Managed for events and resets, Shell Earn for helpers, Shell Routines coming soon. Sixteen task categories.", path: "/services" });
+export const metadata = meta({
+  title: "Services — 4 live in Dwarka",
+  description: "4 verified home services bookable now in Dwarka Sectors 6, 10, 12 with upfront INR pricing. Others coming soon — get notified.",
+  path: "/services",
+});
 
-export default async function Page() {
-  const [cats, lang] = [await categoryList(), await getLang()];
-  const lines = [["quick", "bag", "Shell Quick", "Single small tasks. Minimum order applies.", "/services/quick"], ["managed", "sofa", "Shell Managed", "Events, shifting and full-home resets with one coordinator.", "/services/managed"], ["routines", "calendar", "Shell Routines", "Weekly and monthly help. Coming soon.", "/services/routines"], ["plus", "star", "Shell Plus", "Subscription with perks. Later.", "/services/plus"]];
+export default function Page() {
   return (
     <>
-      <PageHero eyebrow={pick(lang, "choose what you need", "जो चाहिए, करवाइए")} title={pick(lang, "Four ways,", "चार तरीक़े,")} em={pick(lang, "one Shell.", "एक Shell।")} />
-      <Section tone="paper" className="!py-12">
-        <div className="grid gap-5 md:grid-cols-4">{lines.map(([k, ic, n, d, h], i) => <Link key={k} href={h} className="rounded-xl border border-ink/20 bg-cream p-5" style={{ transform: `rotate(${[-1, 1, -0.5, 1.2][i]}deg)` }}><Icon name={ic} size={44} /><h2 className="display mt-2 text-2xl">{n}</h2><p className="mt-1 text-sm">{d}</p>{(k === "routines" || k === "plus") && <span className="stamp stamp-brick mt-2 text-[10px]">coming soon</span>}</Link>)}</div>
-      </Section>
-      <Section tone="cream">
-        <h2 className="display text-4xl md:text-5xl">Every task, <span className="serif-i">one place.</span></h2>
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {cats.map((c, i) => (
-            <Link key={c.slug} href={`/tasks/${c.slug}`} className="flex gap-4 rounded-2xl border border-ink/20 bg-paper p-4 transition-transform hover:-translate-y-1" style={{ transform: `rotate(${((i * 7) % 5 - 2) * 0.35}deg)` }}>
-              <Icon name={c.icon} size={52} /><span><b className="display block text-xl">{lang === "hi" ? c.nameHi : c.nameEn}</b><span className="mono text-xs opacity-70">{inr(c.priceMin)} to {inr(c.priceMax)}</span></span>
-            </Link>
-          ))}
+      <section className="border-b border-[#E3E8E4] bg-[#0B2B26] px-4 py-10 text-white md:px-6 md:py-12">
+        <div className="mx-auto max-w-[1200px]">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#8EB69B]">Dwarka Pilot · Scheduled slots 8am–8pm</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">4 services live. More coming soon.</h1>
+          <p className="mt-2 max-w-2xl text-sm text-white/80">Upfront INR pricing. Verified helpers from your society. Door OTP check-in. Pay after you approve the job.</p>
         </div>
-        <p className="mt-10"><LinkArrow href="/pricing">Pricing and estimator</LinkArrow></p>
-      </Section>
+      </section>
+
+      <section className="mx-auto max-w-[1200px] px-4 py-8 md:px-6">
+        <div className="rounded-[12px] border border-[#0B2B26]/15 bg-[#0B2B26] p-5 text-white">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+            <div>
+              <h2 className="text-base font-bold">Groceries &amp; daily essentials</h2>
+              <p className="mt-1 text-xs text-white/80">Coming soon with your local Dwarka stores. We start with services first.</p>
+            </div>
+            <a href="/groceries" className="inline-flex min-h-[44px] items-center justify-center rounded-[10px] bg-white px-5 text-xs font-semibold text-[#0B2B26] hover:bg-[#F7F8F6]">
+              Get notified for groceries
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <ServiceGrid bookable={MVP_SERVICES} comingSoon={COMING_SOON_SERVICES} />
     </>
   );
 }

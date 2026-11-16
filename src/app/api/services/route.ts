@@ -4,9 +4,9 @@ import { db } from "@/db";
 import { taskTemplates } from "@/db/schema";
 
 const BOOKABLE_SLUGS = new Set([
-  "bathroom-cleaning",
+  "clean-bathroom",
   "utensils",
-  "errands",
+  "errand",
   "parcel-pickup",
 ]);
 
