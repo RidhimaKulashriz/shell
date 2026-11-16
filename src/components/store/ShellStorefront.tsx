@@ -283,18 +283,62 @@ export function ShellStorefront() {
     ];
   }, [customCoords, customLabel]);
 
-  const handlePlaceOrder = () => {
+  const [slotOptions, setSlotOptions] = useState<{ label: string; iso: string; remaining: number; full: boolean }[]>([]);
+  const [slotError, setSlotError] = useState("");
+  const [address, setAddress] = useState("");
+
+  // fetch slots availability
+  useMemo(() => {
+    fetch("/api/bookings/slots")
+      .then((r) => r.json())
+      .then((j) => setSlotOptions(j.slots ?? []))
+      .catch(() => {});
+  }, [isCartOpen]);
+
+  const handlePlaceOrder = async () => {
     if (cartEntries.length === 0) return;
+    if (!address.trim()) {
+      setSlotError("Enter your flat / tower address.");
+      return;
+    }
+    // For MVP, book first item in cart as one booking per cart (multi-item would be multi-bookings)
+    const first = cartEntries[0];
+    if (!first) return;
+    const svc = MVP_SERVICES.find((s) => s.id === first[0]) ?? MVP_SERVICES.find((s) => s.name === first[1].name);
+    if (!svc) {
+      setSlotError("Only the 4 live services can be booked.");
+      return;
+    }
+    setSlotError("");
     setIsPaying(true);
-    setTimeout(() => {
+    try {
+      // map selectedSlot label to iso
+      const slot = slotOptions.find((s) => s.label === selectedSlot);
+      const iso = slot?.iso ?? slotOptions[0]?.iso;
+      if (!iso) throw new Error("No slots available. Try again.");
+      const res = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serviceSlug: svc.slug,
+          quantity: first[1].qty,
+          slotStart: iso,
+          address: address.trim(),
+          lat: customCoords[0],
+          lng: customCoords[1],
+          couponCode: appliedCoupon?.code,
+        }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error ?? "Booking failed");
       const newOrder: OrderRecord = {
-        id: `SHL-${Math.floor(100000 + Math.random() * 900000)}`,
+        id: j.id,
         items: cartEntries.map(([, v]) => ({ name: v.name, qty: v.qty, price: v.price })),
-        total: grandTotal,
+        total: j.total,
         paymentMethod,
         locationName: customLabel,
-        slot: selectedSlot,
-        doorOtp: String(Math.floor(1000 + Math.random() * 9000)),
+        slot: j.slotStart,
+        doorOtp: j.doorOtp ?? "—",
         coords: customCoords,
         helperName: "Verified helper",
         status: "en_route",
@@ -304,10 +348,19 @@ export function ShellStorefront() {
       setCart({});
       setAppliedCoupon(null);
       setCouponCode("");
-      setIsPaying(false);
+      setAddress("");
       setIsCartOpen(false);
       setIsOrdersOpen(true);
-    }, 600);
+      // refresh slot availability
+      fetch("/api/bookings/slots")
+        .then((r) => r.json())
+        .then((j) => setSlotOptions(j.slots ?? []))
+        .catch(() => {});
+    } catch (e) {
+      setSlotError((e as Error).message);
+    } finally {
+      setIsPaying(false);
+    }
   };
 
   return (
@@ -674,14 +727,16 @@ export function ShellStorefront() {
                     ))}
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-[#0E1A17]">Select time slot · Scheduled slots 8am–8pm</label>
+                    <label className="block text-xs font-semibold text-[#0E1A17]">Delivery address · Dwarka Sectors 6, 10, 12 only</label>
+                    <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Tower, flat, sector — e.g. Metro View, Tower B, 402, Sector 12" className="mt-1.5 min-h-[44px] w-full rounded-[10px] border border-[#E3E8E4] bg-white px-3 text-sm text-[#0E1A17] placeholder:text-[#7C8A85] focus:border-[#0B2B26] focus:outline-none" />
+                    <p className="mt-1 text-[11px] text-[#7C8A85]">Geo-fenced: booking fails outside Dwarka 6/10/12. Price is calculated server-side.</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#0E1A17]">Select time slot · 2h windows · 8am–8pm · 7 days · max 3 per slot</label>
                     <select value={selectedSlot} onChange={(e) => setSelectedSlot(e.target.value)} className="mt-1.5 min-h-[44px] w-full rounded-[10px] border border-[#E3E8E4] bg-white px-3 text-sm text-[#0E1A17]">
-                      <option>Today, 4:00 PM - 6:00 PM</option>
-                      <option>Today, 6:00 PM - 8:00 PM</option>
-                      <option>Tomorrow, 8:00 AM - 10:00 AM</option>
-                      <option>Tomorrow, 10:00 AM - 12:00 PM</option>
-                      <option>Tomorrow, 4:00 PM - 6:00 PM</option>
+                      {slotOptions.length ? slotOptions.map((s) => <option key={s.iso} value={s.label} disabled={s.full}>{s.label} {s.full ? "(full)" : `· ${s.remaining} left`}</option>) : <option>Loading slots...</option>}
                     </select>
+                    {slotError && <p className="mt-1 text-xs font-semibold text-[#C2362B]">{slotError}</p>}
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-[#0E1A17]">Coupon code (optional)</label>
