@@ -128,6 +128,10 @@ export function ShellStorefront() {
   const [isPaying, setIsPaying] = useState(false);
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [activeOrder, setActiveOrder] = useState<OrderRecord | null>(null);
+  const [requestText, setRequestText] = useState(
+    "Guests arriving tomorrow, need 2BHK deep clean, groceries, and party decoration"
+  );
+  const [requestSubmitted, setRequestSubmitted] = useState(false);
 
   const filteredItems = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -393,6 +397,81 @@ export function ShellStorefront() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* TELL SHELL REQUEST COMPOSER (Managed Coordinator) */}
+      <section id="tell-shell" className="mx-auto max-w-[1200px] px-4 pt-8 md:px-6">
+        <div className="rounded-[12px] border border-[#E3E8E4] bg-white p-5 md:p-6">
+          <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+            <div>
+              <h2 className="text-lg font-bold text-[#0E1A17]">
+                Tell Shell what you need
+              </h2>
+              <p className="text-xs text-[#4B5A55]">
+                Describe your outcome in plain English. In v1, our ops team reviews every plan before confirming.
+              </p>
+            </div>
+            <span className="inline-block rounded-[6px] bg-[#EEF6F0] px-2.5 py-1 text-[11px] font-semibold text-[#0B2B26]">
+              Illustrative plan preview
+            </span>
+          </div>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-[1.2fr_1fr]">
+            <div>
+              <textarea
+                rows={3}
+                value={requestText}
+                onChange={(e) => {
+                  setRequestText(e.target.value);
+                  setRequestSubmitted(false);
+                }}
+                placeholder="e.g. Guests arriving tomorrow, need bathroom cleaning, groceries, and parcel pickup..."
+                className="w-full rounded-[10px] border border-[#E3E8E4] bg-[#F7F8F6] p-3 text-sm text-[#0E1A17] focus:border-[#0B2B26] focus:bg-white focus:outline-none"
+              />
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs text-[#7C8A85]">
+                  Dwarka Sector 12 Pilot · Human-reviewed within 15 mins
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setRequestSubmitted(true)}
+                  className="min-h-[44px] rounded-[10px] bg-[#0B2B26] px-5 py-2 text-xs font-semibold text-white hover:bg-[#163832]"
+                >
+                  {requestSubmitted ? "Sent to Ops Team" : "Submit for Ops Review"}
+                </button>
+              </div>
+              {requestSubmitted && (
+                <div className="mt-3 rounded-[10px] bg-[#EEF6F0] p-3 text-xs font-semibold text-[#1E8E5A]">
+                  Request received. A Shell coordinator will review and send your confirmed plan shortly.
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-[12px] border border-[#E3E8E4] bg-[#F7F8F6] p-4 text-xs">
+              <div className="font-mono font-semibold uppercase tracking-wider text-[#4B5A55]">
+                Sample Reviewed Plan
+              </div>
+              <div className="mt-2 space-y-1.5 text-[#0E1A17]">
+                <div className="flex justify-between">
+                  <span>Full Home Deep Cleaning (2BHK)</span>
+                  <span className="font-mono">Rs 1,499</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Groceries &amp; Daily Essentials</span>
+                  <span className="font-mono">Rs 350</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Platform &amp; Coordination Fee</span>
+                  <span className="font-mono">Rs 74</span>
+                </div>
+                <div className="flex justify-between border-t border-[#E3E8E4] pt-2 font-bold">
+                  <span>Estimated Total</span>
+                  <span className="font-mono">Rs 1,923</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
