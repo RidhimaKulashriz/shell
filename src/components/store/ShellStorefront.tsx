@@ -212,7 +212,7 @@ export function ShellStorefront() {
         lat,
         lng,
         title: customLabel,
-        subtitle: `Service available · ${activeLocation.etaMins} mins ETA`,
+        subtitle: `Service inside Dwarka Sectors 6, 10, 12`,
         type: "user",
       },
       {
@@ -220,27 +220,11 @@ export function ShellStorefront() {
         lat: lat + 0.0055,
         lng: lng - 0.0045,
         title: "Dwarka Sector 12 Hub",
-        subtitle: "Groceries & essentials dispatch",
+        subtitle: "Operations base",
         type: "hub",
       },
-      {
-        id: "helper-1",
-        lat: lat - 0.0032,
-        lng: lng + 0.0041,
-        title: "Isha Kapoor (Verified Helper)",
-        subtitle: "4.94 rating · Home Cleaning · 4 mins away",
-        type: "helper",
-      },
-      {
-        id: "helper-2",
-        lat: lat + 0.0028,
-        lng: lng + 0.0062,
-        title: "Rajesh Kumar (Verified Helper)",
-        subtitle: "4.91 rating · Small Repairs · 6 mins away",
-        type: "helper",
-      },
     ];
-  }, [customCoords, customLabel, activeLocation.etaMins]);
+  }, [customCoords, customLabel]);
 
   const handlePlaceOrder = () => {
     if (cartEntries.length === 0) return;
@@ -257,8 +241,8 @@ export function ShellStorefront() {
         doorOtp: String(Math.floor(1000 + Math.random() * 9000)),
         coords: customCoords,
         etaMins: activeLocation.etaMins,
-        helperName: "Isha Kapoor",
-        helperRating: 4.94,
+        helperName: "Verified helper",
+        helperRating: 0,
         status: "en_route",
       };
 
@@ -1078,7 +1062,7 @@ export function ShellStorefront() {
                   <div className="flex items-center justify-between rounded-[12px] bg-[#EEF6F0] p-4">
                     <div>
                       <div className="text-sm font-bold text-[#0B2B26]">
-                        Helper assigned: {activeOrder.helperName} ({activeOrder.helperRating} rating)
+                        {activeOrder.helperName ? `Helper assigned: ${activeOrder.helperName}` : "Helper will be assigned shortly"}
                       </div>
                       <div className="mt-0.5 text-xs text-[#4B5A55]">
                         Slot: {activeOrder.slot} · ETA {activeOrder.etaMins} mins
