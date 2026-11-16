@@ -131,6 +131,7 @@ export const POST = api(async ({ req, user }) => {
     total: row.total,
     slotStart: row.slotStart,
     slotEnd: row.slotEnd,
+    paymentStatus: row.paymentStatus,
     doorOtp: process.env.ALLOW_DEV_OTP === "true" ? otpPlain : undefined,
     status: row.status,
   });

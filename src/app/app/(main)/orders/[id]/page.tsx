@@ -6,6 +6,8 @@ import { bookings } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { StatusChip } from "@/components/orders/StatusChip";
 import { CancelButton } from "@/components/orders/CancelButton";
+import { PaymentChip } from "@/components/payments/PaymentChip";
+import { PayActions } from "@/components/payments/PayActions";
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser(["CUSTOMER"]);
@@ -19,7 +21,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       <div className="rounded-[16px] border border-[#E3E8E4] bg-white p-6">
         <div className="flex items-start justify-between gap-3">
           <h1 className="text-xl font-bold text-[#0E1A17]">{row.serviceName}</h1>
-          <StatusChip status={row.status} />
+          <div className="flex flex-col items-end gap-2">
+            <StatusChip status={row.status} />
+            <PaymentChip status={row.paymentStatus} />
+          </div>
         </div>
         <div className="mt-3 grid gap-2 text-sm">
           <div className="flex justify-between"><span className="text-[#4B5A55]">Quantity</span><span className="font-semibold text-[#0E1A17]">{row.quantity}</span></div>
@@ -34,6 +39,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           <div className="mt-3 font-semibold text-[#0E1A17]">Address</div>
           <div className="text-xs text-[#4B5A55]">{row.address}</div>
           <div className="mt-2 text-[11px] text-[#7C8A85]">Dwarka Sectors 6, 10, 12 only · 2h window 8am–8pm</div>
+        </div>
+        <div className="mt-4">
+          <PayActions bookingId={row.id} total={row.total} paymentStatus={row.paymentStatus} />
+          {row.razorpayOrderId && <p className="mt-2 text-xs text-[#4B5A55]">Order {row.razorpayOrderId.slice(0, 20)}… · {row.paymentMethod ?? "PENDING"} {row.paidAt ? `· PAID ${new Date(row.paidAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}` : ""}</p>}
         </div>
         {row.status !== "CANCELLED" && row.status !== "COMPLETED" && (
           <div className="mt-4 rounded-[12px] border border-[#E3E8E4] bg-white p-4">

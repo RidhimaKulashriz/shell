@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/db";
 import { auditLogs, bookings, helpers } from "@/db/schema";
 import { StatusChip } from "@/components/orders/StatusChip";
+import { PaymentChip } from "@/components/payments/PaymentChip";
 import { OpsActions } from "./OpsActions";
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
@@ -18,7 +19,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       <div className="rounded-[16px] border border-[#E3E8E4] bg-white p-6">
         <div className="flex items-start justify-between gap-3">
           <h1 className="text-lg font-bold text-[#0E1A17]">{row.serviceName} ×{row.quantity}</h1>
-          <StatusChip status={row.status} />
+          <div className="flex flex-col items-end gap-2">
+            <StatusChip status={row.status} />
+            <PaymentChip status={row.paymentStatus} />
+          </div>
         </div>
         <div className="mt-3 grid gap-2 text-sm">
           <div className="flex justify-between"><span className="text-[#4B5A55]">Booking ID</span><span className="font-mono">{row.id}</span></div>
@@ -27,6 +31,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           <div className="flex justify-between"><span className="text-[#4B5A55]">Address</span><span>{row.address} ({row.lat.toFixed(4)},{row.lng.toFixed(4)})</span></div>
           <div className="flex justify-between"><span className="text-[#4B5A55]">Total</span><span className="font-bold">Rs {row.total} (subtotal Rs {row.subtotal} + fee Rs {row.platformFee} {row.discount ? `- discount Rs ${row.discount}` : ""})</span></div>
           {helper && <div className="flex justify-between"><span className="text-[#4B5A55]">Assigned helper</span><span className="font-semibold">{helper.displayName} · {helper.level}</span></div>}
+          <div className="flex justify-between"><span className="text-[#4B5A55]">Payment</span><span className="font-semibold">{row.paymentStatus} {row.paymentMethod ? `· ${row.paymentMethod}` : ""} {row.razorpayOrderId ? `· ${row.razorpayOrderId.slice(0, 16)}…` : ""}</span></div>
+          {row.paidAt && <div className="flex justify-between"><span className="text-[#4B5A55]">Paid at</span><span>{new Date(row.paidAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</span></div>}
+          {row.webhookEvents?.length ? <div className="text-[11px] text-[#7C8A85]">Webhook events: {row.webhookEvents.map((e: any) => e.id).join(", ").slice(0, 80)}</div> : null}
         </div>
         <div className="mt-4 rounded-[10px] border border-[#E3E8E4] bg-[#F7F8F6] p-3 text-xs">
           <div className="font-semibold text-[#0B2B26]">Door OTP hash</div>

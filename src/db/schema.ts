@@ -975,6 +975,13 @@ export const bookings = pgTable(
     doorOtpPlain: text("door_otp_plain"), // only for ops/demo, gated by ALLOW_DEV_OTP
     otpFailures: integer("otp_failures").notNull().default(0),
     helperId: uuid("helper_id"),
+    // payments (Step 8) — UPI pending by default, Razorpay on demand
+    paymentStatus: text("payment_status").notNull().default("PENDING"), // PENDING | PAID | FAILED
+    paymentMethod: text("payment_method"), // UPI | RAZORPAY
+    razorpayOrderId: text("razorpay_order_id"),
+    razorpayPaymentId: text("razorpay_payment_id"),
+    paidAt: tz("paid_at"),
+    webhookEvents: jsonb("webhook_events").$type<{ id: string; type: string; ts: string }[]>().notNull().default([]),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

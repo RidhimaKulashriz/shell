@@ -3,6 +3,7 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { bookings } from "@/db/schema";
 import { StatusChip } from "@/components/orders/StatusChip";
+import { PaymentChip } from "@/components/payments/PaymentChip";
 
 const TABS = ["all", "RECEIVED", "ASSIGNED", "IN_PROGRESS", "COMPLETED", "CANCELLED"] as const;
 
@@ -21,7 +22,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
       {rows.length === 0 && <div className="rounded-[12px] border border-[#E3E8E4] bg-white p-10 text-center text-sm text-[#4B5A55]">No bookings in this tab — honest empty state.</div>}
       <div className="overflow-auto rounded-[12px] border border-[#E3E8E4] bg-white">
         <table className="w-full text-left text-xs">
-          <thead className="bg-[#F7F8F6] text-[#4B5A55]"><tr><th className="px-3 py-2">ID</th><th className="px-3 py-2">Service</th><th className="px-3 py-2">Slot (IST)</th><th className="px-3 py-2">Address</th><th className="px-3 py-2">Total</th><th className="px-3 py-2">Status</th></tr></thead>
+          <thead className="bg-[#F7F8F6] text-[#4B5A55]"><tr><th className="px-3 py-2">ID</th><th className="px-3 py-2">Service</th><th className="px-3 py-2">Slot (IST)</th><th className="px-3 py-2">Address</th><th className="px-3 py-2">Total</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Pay</th></tr></thead>
           <tbody className="divide-y divide-[#E3E8E4]">
             {rows.map((r) => (
               <tr key={r.id} className="hover:bg-[#F7F8F6]">
@@ -31,6 +32,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
                 <td className="px-3 py-2 max-w-[200px] truncate">{r.address}</td>
                 <td className="px-3 py-2">Rs {r.total}</td>
                 <td className="px-3 py-2"><StatusChip status={r.status} /></td>
+                <td className="px-3 py-2"><PaymentChip status={r.paymentStatus} /></td>
               </tr>
             ))}
           </tbody>

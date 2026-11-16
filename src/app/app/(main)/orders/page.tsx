@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { bookings } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { StatusChip } from "@/components/orders/StatusChip";
+import { PaymentChip } from "@/components/payments/PaymentChip";
 
 export const metadata = { title: "Orders" };
 
@@ -37,7 +38,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ f
                 <div className="mt-1 text-xs text-[#4B5A55]">{new Date(r.slotStart).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })} — {new Date(r.slotEnd).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit" })} · {r.address}</div>
                 <div className="mt-1 text-xs font-medium text-[#0E1A17]">Rs {r.total} · Qty {r.quantity}</div>
               </div>
-              <StatusChip status={r.status} />
+              <div className="flex flex-col items-end gap-1.5"><StatusChip status={r.status} /><PaymentChip status={r.paymentStatus} /></div>
             </div>
           </Link>
         ))}

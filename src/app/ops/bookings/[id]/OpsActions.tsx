@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function OpsActions({ booking, helpers }: { booking: { id: string; status: string; helperId: string | null }; helpers: { id: string; name: string }[] }) {
+export function OpsActions({ booking, helpers }: { booking: { id: string; status: string; helperId: string | null; paymentStatus: string }; helpers: { id: string; name: string }[] }) {
   const router = useRouter();
   const [helperId, setHelperId] = useState(booking.helperId ?? "");
   const [busy, setBusy] = useState(false);
@@ -42,6 +42,7 @@ export function OpsActions({ booking, helpers }: { booking: { id: string; status
         {booking.status === "ASSIGNED" && <button disabled={busy} onClick={() => call(`/api/ops/bookings/${booking.id}/status`, { to: "IN_PROGRESS" })} className="min-h-[40px] rounded-[10px] bg-[#1E8E5A] px-4 text-xs font-semibold text-white disabled:opacity-60">Start → IN_PROGRESS</button>}
         {booking.status === "IN_PROGRESS" && <button disabled={busy} onClick={() => call(`/api/ops/bookings/${booking.id}/status`, { to: "COMPLETED" })} className="min-h-[40px] rounded-[10px] bg-[#0B2B26] px-4 text-xs font-semibold text-white disabled:opacity-60">Complete → COMPLETED</button>}
         {(booking.status === "RECEIVED" || booking.status === "ASSIGNED") && <button disabled={busy} onClick={() => call(`/api/ops/bookings/${booking.id}/status`, { to: "CANCELLED" })} className="min-h-[40px] rounded-[10px] border border-[#C2362B] bg-white px-4 text-xs font-semibold text-[#C2362B] disabled:opacity-60">Cancel</button>}
+        {booking.paymentStatus !== "PAID" && <button disabled={busy} onClick={() => call(`/api/ops/bookings/${booking.id}/mark-paid`, {})} className="min-h-[40px] rounded-[10px] border border-[#0B2B26] bg-white px-4 text-xs font-semibold text-[#0B2B26] disabled:opacity-60">Mark paid (UPI/cash)</button>}
       </div>
       {msg && <p className="text-xs font-semibold text-[#0B2B26]">{msg}</p>}
       <p className="text-[11px] text-[#7C8A85]">Transitions: RECEIVED→ASSIGNED→IN_PROGRESS→COMPLETED (or CANCELLED from RECEIVED/ASSIGNED). All actions audit-logged.</p>
