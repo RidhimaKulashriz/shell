@@ -1,87 +1,74 @@
+import { and, eq, gte, inArray, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { tasks, helperProfiles, users, offers, addresses, plans, requests, towers, customerProfiles, categories } from "@/db/schema";
-import { and, eq, inArray, ne, or, lt, gt, isNotNull } from "drizzle-orm";
-import { haversine, etaMinutes } from "./geo";
-import { notify } from "./notify";
+import { addresses, helpers, plans, societies, taskTemplates, tasks } from "@/db/schema";
+import { haversine, rideMinutes, walkMinutes } from "@/lib/geo";
 
-export type Candidate = {
-  helperId: string; name: string; score: number; distanceM: number; etaMin: number;
-  breakdown: { rating: number; onTime: number; proximity: number; repeat: number; stacking: number; online: number };
-  level: string; ratingAvg: number; jobsDone: number; online: boolean;
-};
+export type Scored = { helperId: string; name: string; level: string; rating: number; jobsDone: number; score: number; eligible: boolean; reasons: string[]; breakdown: Record<string, number>; distanceM: number; travelMin: number; why: string; languages: string[]; goodAt: string[]; voiceIntro: string; passportSlug: string | null; online: boolean };
 
-async function taskContext(taskId: string) {
-  const [t] = await db.select().from(tasks).where(eq(tasks.id, taskId));
-  if (!t) return null;
-  const [plan] = await db.select().from(plans).where(eq(plans.id, t.planId));
-  const [req] = plan ? await db.select().from(requests).where(eq(requests.id, plan.requestId)) : [];
-  const [addr] = req?.addressId ? await db.select().from(addresses).where(eq(addresses.id, req.addressId)) : [];
-  const [cat] = await db.select().from(categories).where(eq(categories.id, t.categoryId));
-  const [prof] = await db.select().from(customerProfiles).where(eq(customerProfiles.userId, t.customerId));
-  return { t, plan, req, addr, cat, prof };
+const LEVEL_BONUS: Record<string, number> = { STARTER: 0, TRUSTED: 3, PRO: 6, ELITE: 9 };
+
+/** Candidates: skill + gender + availability filters, then a score:
+ *  proximity (travel-time) 25 + skill 20 + rating 20 + on-time 10 + repeat 10 + stacking 6 - load penalty + level bonus. */
+export function scoreHelper(
+  h: typeof helpers.$inferSelect,
+  ctx: { lat: number; lng: number; category: string; femaleOnly: boolean; repeatHelperIds: Set<string>; stackNearby: boolean; load: number; managed: boolean },
+): Omit<Scored, "why"> {
+  const reasons: string[] = [];
+  const d = h.lat != null && h.lng != null ? haversine({ lat: h.lat, lng: h.lng }, ctx) : 1200;
+  const travelMin = d < 400 ? walkMinutes(d) : rideMinutes(d);
+  const skill = h.categories.some((c) => c.slug === ctx.category);
+  if (h.status !== "active") reasons.push("not active");
+  if (h.vacation) reasons.push("on vacation");
+  if (!skill) reasons.push("no skill in category");
+  if (ctx.femaleOnly && !(h.isFemale && h.femaleOnlyEligible)) reasons.push("female-only job");
+  if (ctx.managed && !h.managedEligible) reasons.push("not Managed eligible");
+  if (ctx.load >= h.dailyCap) reasons.push("daily cap reached");
+  if (d > h.radiusM) reasons.push("outside radius");
+  const breakdown = {
+    distance: Math.max(0, Math.round(25 - travelMin * 1.2)),
+    skill: skill ? 20 : 0,
+    rating: Math.round((h.ratingAvg / 5) * 20),
+    onTime: Math.round(h.onTimeRate * 10),
+    repeat: ctx.repeatHelperIds.has(h.id) ? 10 : 0,
+    stacking: ctx.stackNearby ? 6 : 0,
+    load: -ctx.load * 3,
+    level: LEVEL_BONUS[h.level] ?? 0,
+  };
+  return { helperId: h.id, name: h.displayName, level: h.level, rating: h.ratingAvg, jobsDone: h.jobsDone, score: Object.values(breakdown).reduce((a, b) => a + b, 0), eligible: reasons.length === 0, reasons, breakdown, distanceM: Math.round(d), travelMin, languages: h.languages, goodAt: h.goodAt, voiceIntro: h.voiceIntroText ?? "", passportSlug: h.passportSlug, online: h.online };
 }
 
-export async function candidatesFor(taskId: string, exclude: string[] = []): Promise<Candidate[]> {
-  const ctx = await taskContext(taskId);
-  if (!ctx || !ctx.addr || !ctx.cat) return [];
-  const { t, addr, cat, prof } = ctx;
-  const [tower] = await db.select().from(towers).where(eq(towers.id, addr.towerId));
-  const hs = await db.select({ h: helperProfiles, u: users }).from(helperProfiles).innerJoin(users, eq(users.id, helperProfiles.userId))
-    .where(and(eq(helperProfiles.status, "active"), eq(users.status, "active")));
-  const out: Candidate[] = [];
-  for (const { h, u } of hs) {
-    if (exclude.includes(h.userId)) continue;
-    if (!h.categories.includes(cat.slug)) continue;
-    if (prof?.helperGenderPref === "female" && h.gender !== "female") continue;
-    if (t.rush && !h.rushOptIn) continue;
-    const busy = t.scheduledStart && t.scheduledEnd ? await db.select({ id: tasks.id, tw: tasks.planId }).from(tasks).where(and(
-      eq(tasks.helperId, h.userId), inArray(tasks.status, ["accepted", "en_route", "arrived", "in_progress"]),
-      lt(tasks.scheduledStart, t.scheduledEnd), gt(tasks.scheduledEnd, t.scheduledStart))) : [];
-    if (busy.length) continue;
-    const dist = h.lat && h.lng ? haversine({ lat: h.lat, lng: h.lng }, { lat: addr.lat, lng: addr.lng }) : 2000;
-    const prior = await db.select({ id: tasks.id }).from(tasks).where(and(eq(tasks.helperId, h.userId), eq(tasks.customerId, t.customerId), eq(tasks.status, "approved"))).limit(1);
-    const sameDay = t.scheduledStart ? await db.select({ id: tasks.id, planId: tasks.planId }).from(tasks).where(and(
-      eq(tasks.helperId, h.userId), inArray(tasks.status, ["accepted", "en_route", "in_progress"]), isNotNull(tasks.scheduledStart))) : [];
-    const breakdown = {
-      rating: +(Math.min(h.ratingAvg, 5) / 5 * 0.3).toFixed(3),
-      onTime: +(h.onTimeRate * 0.2).toFixed(3),
-      proximity: +(Math.max(0, 1 - dist / (h.radiusM || 3000)) * 0.2).toFixed(3),
-      repeat: prior.length ? 0.15 : 0,
-      stacking: sameDay.length && tower ? 0.1 : 0,
-      online: h.online ? 0.05 : 0,
-    };
-    const score = +Object.values(breakdown).reduce((a, b) => a + b, 0).toFixed(3);
-    out.push({ helperId: h.userId, name: u.name, score, distanceM: Math.round(dist), etaMin: etaMinutes(dist, addr.floor), breakdown, level: h.level, ratingAvg: h.ratingAvg, jobsDone: h.jobsDone, online: h.online });
-  }
-  return out.sort((a, b) => b.score - a.score);
+export function whyWeChose(s: Omit<Scored, "why">, customerFirst = "you") {
+  const bits: string[] = [];
+  if (s.breakdown.repeat) bits.push(`${customerFirst} have worked with ${s.name.split(" ")[0]} before`);
+  if (s.travelMin <= 6) bits.push(`about ${s.travelMin} min away inside the society`);
+  if (s.rating >= 4.8) bits.push(`rated ${s.rating.toFixed(1)}`);
+  if (s.breakdown.stacking) bits.push("already nearby for another task");
+  if (s.jobsDone >= 30) bits.push(`${s.jobsDone} jobs done`);
+  if (!bits.length) bits.push("best fit for this task and time");
+  return `${s.name.split(" ")[0]}: ${bits.slice(0, 3).join(", ")}.`;
 }
 
-/** Offer a task to the top candidates. First to accept wins. */
-export async function dispatchTask(taskId: string, opts: { count?: number; exclude?: string[]; priority?: boolean } = {}) {
-  const previous = await db.select().from(offers).where(eq(offers.taskId, taskId));
-  const exclude = [...(opts.exclude ?? []), ...previous.filter((o) => o.status === "declined" || o.status === "expired").map((o) => o.helperId)];
-  const cands = (await candidatesFor(taskId, exclude)).slice(0, opts.count ?? 3);
-  const [t] = await db.select().from(tasks).where(eq(tasks.id, taskId));
+export async function suggestHelpers(taskId: string, limit = 5): Promise<Scored[]> {
+  const [t] = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1);
   if (!t) return [];
-  for (const c of cands) {
-    const existing = previous.find((o) => o.helperId === c.helperId && o.status === "sent");
-    if (existing) continue;
-    await db.insert(offers).values({ taskId, helperId: c.helperId, payout: t.helperPayout, score: { total: c.score, ...c.breakdown }, expiresAt: new Date(Date.now() + 15 * 60000) });
-    await notify(c.helperId, "helper_offer", "New job offer", `${t.title}. You earn ₹${Math.round(t.helperPayout / 100)}.`, "/helper");
-  }
-  if (cands.length || previous.some((o) => o.status === "sent")) await db.update(tasks).set({ status: "offered", updatedAt: new Date() }).where(and(eq(tasks.id, taskId), eq(tasks.status, "planned")));
-  return cands;
+  const [plan] = await db.select().from(plans).where(eq(plans.id, t.planId)).limit(1);
+  const [tpl] = await db.select().from(taskTemplates).where(eq(taskTemplates.slug, t.templateSlug)).limit(1);
+  const [addr] = plan?.addressId ? await db.select().from(addresses).where(eq(addresses.id, plan.addressId)).limit(1) : [];
+  const [soc] = addr ? await db.select().from(societies).where(eq(societies.id, addr.societyId)).limit(1) : await db.select().from(societies).limit(1);
+  const lat = addr?.lat ?? soc?.centroidLat ?? 28.5921;
+  const lng = addr?.lng ?? soc?.centroidLng ?? 77.046;
+  const all = await db.select().from(helpers).where(inArray(helpers.status, ["active", "paused", "suspended"]));
+  const dayStart = new Date();
+  dayStart.setHours(0, 0, 0, 0);
+  const loads = await db.select({ h: tasks.assignedHelperId, n: sql<number>`count(*)` }).from(tasks).where(and(gte(tasks.scheduledStart, dayStart), ne(tasks.status, "cancelled"))).groupBy(tasks.assignedHelperId);
+  const loadMap = new Map(loads.map((l) => [l.h, Number(l.n)]));
+  const sameTower = await db.select({ h: tasks.assignedHelperId }).from(tasks).innerJoin(plans, eq(plans.id, tasks.planId)).where(and(eq(plans.addressId, plan?.addressId ?? "00000000-0000-0000-0000-000000000000"), ne(tasks.id, taskId)));
+  const nearby = new Set(sameTower.map((x) => x.h).filter(Boolean) as string[]);
+  const prior = await db.select({ h: tasks.assignedHelperId }).from(tasks).innerJoin(plans, eq(plans.id, tasks.planId)).where(and(eq(plans.customerId, plan?.customerId ?? "00000000-0000-0000-0000-000000000000"), eq(tasks.status, "approved")));
+  const repeat = new Set(prior.map((p) => p.h).filter(Boolean) as string[]);
+  return all
+    .map((h) => scoreHelper(h, { lat, lng, category: tpl?.categorySlug ?? "", femaleOnly: false, repeatHelperIds: repeat, stackNearby: nearby.has(h.id), load: loadMap.get(h.id) ?? 0, managed: !!tpl?.managedOnly && plan?.managed === true }))
+    .sort((a, b) => Number(b.eligible) - Number(a.eligible) || b.score - a.score)
+    .slice(0, limit)
+    .map((s) => ({ ...s, why: whyWeChose(s) }));
 }
-
-/** Re-offer tasks whose offers all expired or were declined. */
-export async function reofferStale() {
-  const cutoff = new Date();
-  await db.update(offers).set({ status: "expired", respondedAt: cutoff }).where(and(eq(offers.status, "sent"), lt(offers.expiresAt, cutoff)));
-  const stuck = await db.select().from(tasks).where(and(eq(tasks.status, "offered"), isNull(tasks.helperId)));
-  for (const t of stuck) {
-    const open = await db.select().from(offers).where(and(eq(offers.taskId, t.id), eq(offers.status, "sent")));
-    if (!open.length) await dispatchTask(t.id);
-  }
-}
-import { isNull } from "drizzle-orm";
-void ne; void or;

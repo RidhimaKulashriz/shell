@@ -1,9 +1,24 @@
-import { Hero, Section } from "@/components/page";
-import { ContactForm } from "@/components/site";
-export const metadata = { title: "Contact", description: "Talk to the Shell team." };
+import { EnquiryForm } from "@/components/EnquiryForm";
+import { PageHero, Section } from "@/components/site/Bits";
+import { meta } from "@/lib/seo";
+
+export const metadata = meta({ title: "Contact Shell", description: "Write to us, message on WhatsApp, or reach the Grievance Officer.", path: "/contact" });
+
 export default function Page() {
-  return (<><Hero eyebrow="Contact" title="Talk to a person." />
-    <Section tone="white"><div className="grid gap-8 md:grid-cols-[1.2fr_1fr]"><ContactForm kind="contact" fields={[{ name: "name", label: "Your name", required: true }, { name: "email", label: "Email", type: "email", required: true }, { name: "message", label: "How can we help?", type: "textarea", required: true }]} />
-      <div className="space-y-4"><div className="card p-5"><h2 className="text-lg font-semibold">Quick answers</h2><p className="text-sm text-ink/70">WhatsApp +91 98100 00000<br />hello@shell.example</p></div>
-        <div className="card p-5"><h2 className="text-lg font-semibold">Grievance officer</h2><p className="text-sm text-ink/70">To be appointed (placeholder). grievance@shell.example. We respond within 72 hours.</p></div></div></div></Section></>);
+  const wa = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "919999900000";
+  return (
+    <>
+      <PageHero eyebrow="get in touch" title="Talk to" em="us." />
+      <Section tone="paper">
+        <div className="grid gap-10 md:grid-cols-2">
+          <EnquiryForm kind="contact" fields={[{ name: "name", label: "Name", required: true }, { name: "email", label: "Email", type: "email" }, { name: "phone", label: "Phone", type: "tel" }, { name: "message", label: "Message", type: "textarea", required: true }]} />
+          <div className="space-y-5">
+            <a className="btn btn-forest" href={`https://wa.me/${wa}`} target="_blank" rel="noopener noreferrer">Message us on WhatsApp</a>
+            <p>Email: hello@shell.example</p>
+            <div className="receipt scallop-b"><b>Grievance Officer</b><div className="perf" /><p>Name: [to be appointed]</p><p>Address: [registered office, Delhi]</p><p>Email: grievance@shell.example</p><p>We respond within 24 hours and resolve within 15 days.</p></div>
+          </div>
+        </div>
+      </Section>
+    </>
+  );
 }

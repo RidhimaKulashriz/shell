@@ -1,20 +1,26 @@
-import { db } from "@/db";
-import { helperProfiles, users, strikes } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
-import { OpsAction } from "@/components/ops";
-import { fmtDate } from "@/lib/utils";
-export const metadata = { title: "Ops: Helpers" };
+import { db } from "@/db";
+import { helpers, strikes } from "@/db/schema";
+import { Act } from "@/components/ops/Actions";
+import { Badge, H1, Table } from "@/components/ops/ui";
+import { audit } from "@/lib/audit";
+import { requireUser } from "@/lib/auth";
+
+export const metadata = { title: "Helpers" };
+
 export default async function Page() {
-  const rows = await db.select({ h: helperProfiles, u: users }).from(helperProfiles).innerJoin(users, eq(users.id, helperProfiles.userId)).orderBy(desc(helperProfiles.createdAt));
-  const queue = rows.filter((r) => r.h.status === "review"); const rest = rows.filter((r) => r.h.status !== "review");
-  const appeals = await db.select().from(strikes).where(eq(strikes.appealStatus, "submitted"));
-  const Chk = ({ ok, l }: { ok: boolean; l: string }) => <span className={`pill ${ok ? "" : "pill-warn"}`}>{ok ? "✓" : "…"} {l}</span>;
-  return (<div className="space-y-6"><h1 className="text-3xl font-semibold text-tide">Helpers</h1>
-    <section><h2 className="mb-3 text-xl font-semibold">Application queue ({queue.length})</h2>{queue.length === 0 && <p className="text-sm text-ink/50">No applications waiting.</p>}
-      <div className="space-y-3">{queue.map(({ h, u }) => <div key={u.id} className="card p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="font-semibold">{u.name}</div><div className="text-sm text-ink/60">{u.phone} · {h.college} · DOB {h.dob} · {h.categories.join(", ")}</div>
-        <div className="mt-2 flex flex-wrap gap-1"><Chk ok={h.kycStatus === "verified"} l="Government ID (reference only)" /><Chk ok={h.collegeIdStatus === "verified"} l="College ID" /><Chk ok={h.livenessStatus === "verified"} l="Selfie match" /><Chk ok={!!h.payoutAccountRef} l="Payout account" /></div></div>
-        <div className="flex flex-wrap gap-2">{h.collegeIdStatus !== "verified" && <OpsAction body={{ action: "college_id", id: u.id }} success="College ID verified">Verify college ID</OpsAction>}<OpsAction body={{ action: "helper_status", id: u.id, status: "training" }} ask="Approval note (shown to the helper)" className="btn btn-primary btn-sm" success="Approved for training">Approve</OpsAction><OpsAction body={{ action: "helper_status", id: u.id, status: "applied" }} ask="Plain reason and how to fix it" className="btn btn-ghost btn-sm">Reject</OpsAction></div></div></div>)}</div></section>
-    {appeals.length > 0 && <section><h2 className="mb-3 text-xl font-semibold">Strike appeals</h2>{appeals.map((s) => <div key={s.id} className="card mb-2 flex items-center justify-between p-4 text-sm"><span>{s.reason}</span><span className="flex gap-2"><OpsAction body={{ action: "appeal_decide", id: s.id, decision: "revoke" }}>Revoke strike</OpsAction><OpsAction body={{ action: "appeal_decide", id: s.id, decision: "uphold" }}>Uphold</OpsAction></span></div>)}</section>}
-    <section><h2 className="mb-3 text-xl font-semibold">All helpers</h2><div className="card overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-bone text-xs uppercase text-ink/50"><tr><th className="p-3">Name</th><th>Level</th><th>Rating</th><th>Jobs</th><th>On-time</th><th>Strikes</th><th>Status</th><th>Actions</th></tr></thead><tbody>{rest.map(({ h, u }) => <tr key={u.id} className="border-t border-line"><td className="p-3 font-medium">{u.name}<div className="text-xs text-ink/50">{h.gender} · {h.languages.join("/")}</div></td><td>{h.level.toLowerCase()}</td><td>{h.ratingAvg ? h.ratingAvg.toFixed(1) : "new"}</td><td>{h.jobsDone}</td><td>{Math.round(h.onTimeRate * 100)}%</td><td>{h.strikes}</td><td><span className={`pill ${h.status === "active" ? "" : "pill-warn"}`}>{h.status}{h.online ? " · online" : ""}</span></td>
-      <td><span className="flex flex-wrap gap-1"><OpsAction body={{ action: "helper_strike", id: u.id }} ask="Strike reason">Strike</OpsAction>{h.status === "active" ? <OpsAction body={{ action: "helper_status", id: u.id, status: "suspended" }} ask="Reason for suspension">Suspend</OpsAction> : <OpsAction body={{ action: "helper_status", id: u.id, status: "active" }} ask="Reason for reactivation">Reactivate</OpsAction>}</span></td></tr>)}</tbody></table></div><p className="mt-2 text-xs text-ink/50">Joined {rest[0] ? fmtDate(rest[0].h.createdAt) : ""}. Every action is written to the audit log.</p></section></div>);
+  const u = await requireUser(["OPS"], "/app/login");
+  const hs = await db.select().from(helpers).orderBy(desc(helpers.createdAt));
+  const ss = await db.select().from(strikes);
+  await audit({ actorId: u.id, action: "view_helper_documents", entity: "helper_list" });
+  const queue = hs.filter((h) => ["applied", "review", "training", "shadow"].includes(h.status));
+  const trans = (h: typeof hs[number]) => {
+    const next: Record<string, string[]> = { applied: ["review"], review: ["training"], training: ["shadow", "active"], shadow: ["active"], active: ["paused", "suspended"], paused: ["active"], suspended: ["active", "banned"] };
+    return (next[h.status] ?? []).map((s) => <Act key={s} url={`/api/ops/helpers/${h.id}/status`} body={{ status: s }} ask={`Reason to move ${h.displayName} to ${s}?`} label={s} variant="btn-cream" />);
+  };
+  return (
+    <div className="space-y-5"><H1 sub="Application queue, verification, strikes, payout holds">Helpers</H1>
+      <section><h2 className="display mb-2 text-xl">Application queue ({queue.length})</h2><Table cols={["Name", "Status", "ID", "College ID", "Selfie", "Training", "Actions"]} rows={queue.map((h) => [h.displayName, <Badge key="s">{h.status}</Badge>, h.kycStatus, h.collegeIdStatus, h.livenessStatus, h.trainingStatus, <span key="a" className="flex flex-wrap gap-1">{trans(h)}</span>])} /></section>
+      <section><h2 className="display mb-2 text-xl">All helpers</h2><Table cols={["Name", "Level", "Status", "Rating", "Jobs", "On-time", "Strikes", "Tags", "Actions"]} rows={hs.map((h) => [h.displayName, h.level, <Badge key="s">{h.status}</Badge>, h.ratingAvg.toFixed(1), h.jobsDone, `${Math.round(h.onTimeRate * 100)}%`, ss.filter((s) => s.helperId === h.id).map((s) => s.reason).join("; ") || h.strikes, <span key="t" className="text-xs">{h.femaleOnlyEligible ? "female-only ok · " : ""}{h.managedEligible ? "managed · " : ""}{h.languages.join("/")}{h.payoutHold ? " · PAYOUT HOLD" : ""}</span>, <span key="a" className="flex flex-wrap gap-1"><Act url={`/api/ops/helpers/${h.id}/strike`} body={{ severity: 1 }} ask="Strike reason" label="Strike" variant="btn-ghost" />{trans(h)}{h.status === "active" && <Act url={`/api/ops/helpers/${h.id}/status`} body={{ status: "active", payoutHold: !h.payoutHold }} ask="Reason" label={h.payoutHold ? "Release hold" : "Hold payouts"} variant="btn-ghost" />}</span>])} /></section></div>
+  );
 }

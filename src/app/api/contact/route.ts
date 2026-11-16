@@ -1,11 +1,19 @@
-import { route, ApiError } from "@/lib/api";
-import { db } from "@/db";
-import { inquiries } from "@/db/schema";
 import { z } from "zod";
-const schema = z.object({ kind: z.enum(["contact", "society", "business", "helper"]).default("contact"), name: z.string().trim().min(2, "Please enter your name.").max(100), email: z.string().email("Enter a valid email.").optional().or(z.literal("")), phone: z.string().max(20).optional(), message: z.string().max(1500).optional().default(""), meta: z.record(z.string(), z.string().max(200)).optional().default({}) });
-export const POST = route({ limit: [5, 60000] }, async ({ body }) => {
-  const p = schema.safeParse(body);
-  if (!p.success) throw new ApiError("invalid", p.error.issues[0].message);
-  await db.insert(inquiries).values({ ...p.data, email: p.data.email || null });
+import { db } from "@/db";
+import { contactMessages } from "@/db/schema";
+import { api, body } from "@/lib/api";
+
+const schema = z.object({
+  kind: z.enum(["contact", "society", "b2b", "careers", "callback", "notify"]),
+  name: z.string().trim().min(2, "Please enter your name").max(100),
+  phone: z.string().trim().max(20).optional(),
+  email: z.string().trim().email("Please enter a valid email").max(120).optional().or(z.literal("")),
+  message: z.string().trim().max(2000).optional(),
+  data: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const POST = api(async ({ req }) => {
+  const b = await body(req, schema);
+  await db.insert(contactMessages).values({ kind: b.kind === "notify" ? "contact" : b.kind, name: b.name, phone: b.phone || null, email: b.email || null, message: b.message ?? "", data: { ...(b.data ?? {}), originalKind: b.kind } });
   return { ok: true };
-}, true);
+}, { limit: { key: "contact", max: 6, windowMs: 600000 } });

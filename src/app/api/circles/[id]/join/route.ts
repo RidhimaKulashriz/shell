@@ -1,3 +1,7 @@
-import { route } from "@/lib/api";
-import { joinCircle } from "@/lib/requests";
-export const POST = route<{ id: string }>({ roles: ["CUSTOMER"] }, async ({ params, user }) => joinCircle(params.id, user.id));
+import { api } from "@/lib/api";
+import { joinCircle } from "@/lib/circles";
+
+export const POST = api<{ id: string }>(async ({ params, user }) => {
+  const c = await joinCircle(params.id, user!.id);
+  return { ok: true, circle: c };
+}, { roles: ["CUSTOMER"] });

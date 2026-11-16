@@ -1,12 +1,22 @@
-import { Hero, Section, H2 } from "@/components/page";
-import { Logo } from "@/components/icons";
-import { PRESS } from "@/lib/content";
-export const metadata = { title: "Press kit" };
+import { Wordmark } from "@/components/Icon";
+import { PageHero, Section } from "@/components/site/Bits";
+import { meta } from "@/lib/seo";
+
+export const metadata = meta({ title: "Press kit", description: "Shell logo, colours, fonts and boilerplate.", path: "/press" });
+const COLORS = [["Deep Tide", "#051F20"], ["Forest", "#0B2B26"], ["Deep Moss", "#163832"], ["Eucalyptus", "#235347"], ["Sage", "#8EB69B"], ["Shell Cream", "#DAF1DE"], ["Warm Sand", "#E8C48A"], ["Sunbeam", "#F2C318"], ["Paper", "#F4F1E6"], ["Ink", "#0E1A17"]];
+
 export default function Page() {
-  const colors = [["Deep Tide", "#051F20"], ["Forest", "#0B2B26"], ["Deep Moss", "#163832"], ["Eucalyptus", "#235347"], ["Sage", "#8EB69B"], ["Shell Cream", "#DAF1DE"], ["Warm Sand", "#E8C48A"], ["Sunbeam", "#F2C318"]];
-  return (<><Hero eyebrow="Press kit" title="Everything you need to write about Shell." />
-    <Section tone="white"><H2 className="text-tide">Boilerplate</H2><p className="mt-3 max-w-2xl text-ink/80">{PRESS.boilerplate}</p>
-      <H2 className="mt-12 text-tide">Logo</H2><div className="mt-4 flex flex-wrap gap-4"><div className="card p-8"><Logo size={44} /></div><div className="rounded-2xl bg-tide p-8"><Logo light size={44} /></div></div>
-      <H2 className="mt-12 text-tide">Colours</H2><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">{colors.map(([n, c]) => <div key={n} className="overflow-hidden rounded-xl border border-line"><div className="h-16" style={{ background: c }} /><div className="p-2 text-xs"><strong>{n}</strong><br />{c}</div></div>)}</div>
-      <H2 className="mt-12 text-tide">Fonts</H2><p className="mt-3 text-ink/80">Fraunces (headlines), DM Sans (interface), DM Mono (receipts and prices).</p></Section></>);
+  return (
+    <>
+      <PageHero eyebrow="for the press" title="Press" em="kit." />
+      <Section tone="paper">
+        <div className="grid gap-8 md:grid-cols-2">
+          <div className="rounded-2xl border border-ink/20 bg-cream p-8 text-forest"><Wordmark size={64} /><p className="mt-4 text-sm"><a className="link-quiet" href="/icon.svg" download>Download the mark (SVG)</a></p></div>
+          <div><h2 className="display text-2xl">Boilerplate</h2><p className="mt-2">Shell is a managed personal life-assistant service for Indian apartment societies. Customers write one message in English or Hindi; Shell plans it, sends verified helpers and takes responsibility until it is done. Shell is launching first inside one apartment society in Delhi.</p><h2 className="display mt-6 text-2xl">Fonts</h2><p>Fraunces (headlines), Instrument Serif italic (emphasis), DM Sans (interface), DM Mono (prices, IDs), Caveat (handwriting), Noto Sans Devanagari (Hindi).</p></div>
+        </div>
+        <h2 className="display mt-10 text-2xl">Colours</h2>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">{COLORS.map(([n, c]) => <div key={n} className="overflow-hidden rounded-xl border border-ink/20"><div className="h-16" style={{ background: c }} /><div className="bg-paper p-2 text-xs"><b>{n}</b><div className="mono">{c}</div></div></div>)}</div>
+      </Section>
+    </>
+  );
 }

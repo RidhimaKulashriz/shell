@@ -1,13 +1,20 @@
-import { db } from "@/db";
-import { pricingConfigs } from "@/db/schema";
 import { desc } from "drizzle-orm";
-import { getPricing } from "@/lib/settings";
-import { PricingEditor } from "@/components/ops";
-import { fmtDateTime } from "@/lib/utils";
-export const metadata = { title: "Ops: Pricing" };
+import { db } from "@/db";
+import { pricingConfigs, promoCodes } from "@/db/schema";
+import { PricingEditor } from "@/components/ops/Actions";
+import { H1, Table } from "@/components/ops/ui";
+import { activePricing } from "@/lib/data";
+import { fmtDateTime, inr } from "@/lib/format";
+
+export const metadata = { title: "Pricing engine" };
+
 export default async function Page() {
-  const cfg = await getPricing(); const hist = await db.select().from(pricingConfigs).orderBy(desc(pricingConfigs.version)).limit(10);
-  return (<div className="space-y-6"><h1 className="text-3xl font-semibold text-tide">Pricing engine</h1><p className="text-ink/60">Changes are versioned, need a reason and apply to new plans only. Task base rates are in the Catalog.</p><PricingEditor cfg={cfg} />
-    <section><h2 className="mb-2 text-xl font-semibold">Version history</h2><div className="card divide-y divide-line text-sm">{hist.map((h) => <div key={h.id} className="flex justify-between p-3"><span><strong>v{h.version}</strong> · {h.reason}</span><span className="text-ink/50">{fmtDateTime(h.effectiveFrom)}</span></div>)}</div></section>
-    <section className="card p-4 text-sm"><h2 className="font-semibold">Circle discount curve</h2><p className="text-ink/60">{cfg.circleCurve.map((c) => `${c.joiners} flat${c.joiners > 1 ? "s" : ""}: ${Math.round(c.discount * 100)}%`).join(" · ")} (capped at {Math.round(cfg.circleMaxDiscount * 100)}%)</p><p className="mt-2 text-ink/60">Promo codes: {Object.entries(cfg.promos).map(([k, v]) => `${k} (${v.label})`).join(", ")}</p></section></div>);
+  const [cfg, hist, promos] = await Promise.all([activePricing(), db.select().from(pricingConfigs).orderBy(desc(pricingConfigs.version)), db.select().from(promoCodes)]);
+  return (
+    <div className="space-y-5"><H1 sub="Versioned and editable without a deploy. Every change needs a reason and is logged.">Pricing engine (live v{cfg.version})</H1>
+      <Table cols={["Setting", "Value"]} rows={[["Minimum order", inr(cfg.minOrder)], ["Fee floor / percent", `${inr(cfg.feeFloor)} / ${(cfg.feePercent * 100).toFixed(1)}%`], ["Coordination fee", `${inr(cfg.coordinationFee)} at ${cfg.coordinationMinTasks}+ tasks`], ["Urgency", `normal 1.0 · same-day ${cfg.urgency.same_day} · rush ${cfg.urgency.rush}`], ["Circle curve", cfg.circleCurve.map((c) => `${c.flats}:${Math.round(c.discount * 100)}%`).join("  ")], ["Commission by level", Object.entries(cfg.commissionPct).map(([k, v]) => `${k} ${Math.round(v * 100)}%`).join("  ")], ["Surge", `festival x${cfg.surge.festival} · late night x${cfg.surge.lateNight}`], ["GST", `${cfg.gstPct * 100}%`]]} />
+      <PricingEditor cfg={cfg} />
+      <section><h2 className="display text-xl">History</h2><Table cols={["Version", "Effective", "Reason"]} rows={hist.map((h) => [`v${h.version}`, fmtDateTime(h.effectiveFrom), h.reason])} /></section>
+      <section><h2 className="display text-xl">Promo codes</h2><Table cols={["Code", "Discount", "Used", "Stackable"]} rows={promos.map((p) => [p.code, p.percent ? `${p.percent}%` : inr(p.flat), `${p.used}/${p.maxUses}`, p.stackable ? "yes" : "no"])} /></section></div>
+  );
 }

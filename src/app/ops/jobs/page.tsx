@@ -1,14 +1,19 @@
 import Link from "next/link";
-import { db } from "@/db";
-import { tasks, users } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
-import { fmtDateTime, STATUS_LABEL } from "@/lib/utils";
-import { formatINR } from "@/lib/pricing";
-export const metadata = { title: "Ops: Jobs" };
-export default async function Page({ searchParams }: { searchParams: Promise<{ s?: string }> }) {
-  const s = (await searchParams).s;
-  const rows = await db.select().from(tasks).where(s ? eq(tasks.status, s) : undefined).orderBy(desc(tasks.createdAt)).limit(100);
-  const us = await db.select().from(users); const nm = (id?: string | null) => us.find((u) => u.id === id)?.name ?? "";
-  return (<div><h1 className="text-3xl font-semibold text-tide">Jobs</h1><div className="mt-3 flex flex-wrap gap-2">{["", "offered", "accepted", "en_route", "in_progress", "awaiting_approval", "approved", "cancelled"].map((x) => <Link key={x} href={x ? `/ops/jobs?s=${x}` : "/ops/jobs"} className={`chip ${(s ?? "") === x ? "on" : ""}`}>{x ? STATUS_LABEL[x] : "All"}</Link>)}</div>
-    <div className="card mt-4 overflow-x-auto"><table className="w-full min-w-[700px] text-left text-sm"><thead className="bg-bone text-xs uppercase text-ink/50"><tr><th className="p-3">Task</th><th>Customer</th><th>Helper</th><th>When</th><th>Price</th><th>Status</th></tr></thead><tbody>{rows.map((t) => <tr key={t.id} className="border-t border-line"><td className="p-3 font-medium"><Link href={`/ops/jobs/${t.id}`} className="underline">{t.title}</Link></td><td>{nm(t.customerId)}</td><td>{nm(t.helperId) || "—"}</td><td>{fmtDateTime(t.scheduledStart)}</td><td style={{ fontFamily: "var(--font-mono)" }}>{formatINR(t.price)}</td><td><span className="pill">{STATUS_LABEL[t.status]}</span></td></tr>)}</tbody></table></div></div>);
+import { db } from "@/db";
+import { helpers, plans, tasks, users } from "@/db/schema";
+import { Badge, H1, Table } from "@/components/ops/ui";
+import { fmtDateTime, inr } from "@/lib/format";
+
+export const metadata = { title: "Jobs" };
+
+export default async function Page({ searchParams }: { searchParams: Promise<{ status?: string; q?: string }> }) {
+  const sp = await searchParams;
+  const rows = await db.select({ t: tasks, h: helpers.displayName, c: users.name }).from(tasks).innerJoin(plans, eq(plans.id, tasks.planId)).innerJoin(users, eq(users.id, plans.customerId)).leftJoin(helpers, eq(helpers.id, tasks.assignedHelperId)).orderBy(desc(tasks.createdAt)).limit(200);
+  const f = rows.filter((r) => (!sp.status || r.t.status === sp.status) && (!sp.q || (r.t.name + r.c + (r.h ?? "")).toLowerCase().includes(sp.q.toLowerCase())));
+  return (
+    <div><H1>Jobs</H1>
+      <form className="mb-3 flex flex-wrap gap-2"><input name="q" defaultValue={sp.q} className="field !w-60 !py-1" placeholder="Search customer, helper, task" /><select name="status" defaultValue={sp.status ?? ""} className="field !w-auto !py-1"><option value="">All statuses</option>{["planned", "offered", "accepted", "en_route", "arrived", "in_progress", "awaiting_approval", "approved", "cancelled"].map((s) => <option key={s}>{s}</option>)}</select><button className="btn btn-forest btn-sm">Filter</button><a className="btn btn-cream btn-sm" href="?status=in_progress">In progress</a></form>
+      <Table cols={["Task", "Customer", "Helper", "When", "Price", "Status"]} rows={f.map(({ t, h, c }) => [<Link key={t.id} href={`/ops/jobs/${t.id}`} className="font-semibold underline">{t.name}</Link>, c, h ?? "-", fmtDateTime(t.scheduledStart), inr(t.price), <Badge key={t.id}>{t.status}</Badge>])} /></div>
+  );
 }

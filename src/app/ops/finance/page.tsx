@@ -1,23 +1,35 @@
+import { desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { ledgerEntries, payments, payouts, tasks } from "@/db/schema";
-import { desc, sql, eq } from "drizzle-orm";
-import { formatINR } from "@/lib/pricing";
-import { fmtDateTime } from "@/lib/utils";
-export const metadata = { title: "Ops: Finance" };
+import { expenses, ledgerEntries, payments, payouts, helpers, tasks } from "@/db/schema";
+import { Badge, H1, Table, Tile } from "@/components/ops/ui";
+import { ledgerBalanceCheck } from "@/lib/money";
+import { fmtDateTime, inr } from "@/lib/format";
+
+export const metadata = { title: "Finance" };
+
 export default async function Page() {
-  const acc = await db.select({ a: ledgerEntries.account, d: sql<number>`sum(${ledgerEntries.debit})::int`, c: sql<number>`sum(${ledgerEntries.credit})::int` }).from(ledgerEntries).groupBy(ledgerEntries.account);
-  const totalD = acc.reduce((s, x) => s + x.d, 0), totalC = acc.reduce((s, x) => s + x.c, 0);
-  const unb = await db.select({ j: ledgerEntries.journalId }).from(ledgerEntries).groupBy(ledgerEntries.journalId).having(sql`sum(${ledgerEntries.debit}) <> sum(${ledgerEntries.credit})`);
-  const pays = await db.select().from(payments).orderBy(desc(payments.createdAt)).limit(15); const po = await db.select().from(payouts).orderBy(desc(payouts.createdAt)).limit(10);
-  const capTasks = await db.select().from(tasks).where(sql`${tasks.expensesCap} > 0`).limit(20);
-  const bal = (n: string) => { const a = acc.find((x) => x.a === n); return a ? a.c - a.d : 0; };
-  const gmv = pays.filter((p) => p.status === "captured").reduce((s, p) => s + p.amount + p.creditsUsed + p.walletUsed, 0);
-  void eq;
-  return (<div className="space-y-6"><h1 className="text-3xl font-semibold text-tide">Finance</h1>
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{[["Platform revenue (net of GST)", bal("platform_revenue")], ["GST payable", bal("tax_payable")], ["Helper payable (unpaid)", bal("helper_payable")], ["Held in escrow", bal("escrow")]].map(([l, v]) => <div key={String(l)} className="card p-4"><div className="text-xs font-semibold uppercase tracking-wider text-ink/50">{l}</div><div className="serif text-3xl font-bold">{formatINR(Number(v))}</div></div>)}</div>
-    <div className={`rounded-2xl p-4 text-sm ${unb.length || totalD !== totalC ? "bg-[#f8dcd8]" : "bg-cream"}`}>Ledger check: debits {formatINR(totalD)} · credits {formatINR(totalC)} · {unb.length === 0 && totalD === totalC ? "every journal balances to zero" : `${unb.length} unbalanced journals!`}</div>
-    <section><h2 className="mb-2 text-xl font-semibold">Ledger by account</h2><div className="card overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-bone text-xs uppercase text-ink/50"><tr><th className="p-3">Account</th><th>Debit</th><th>Credit</th><th>Balance (Cr − Dr)</th></tr></thead><tbody>{acc.map((x) => <tr key={x.a} className="border-t border-line"><td className="p-3 font-medium">{x.a}</td><td style={{ fontFamily: "var(--font-mono)" }}>{formatINR(x.d)}</td><td style={{ fontFamily: "var(--font-mono)" }}>{formatINR(x.c)}</td><td style={{ fontFamily: "var(--font-mono)" }}>{formatINR(x.c - x.d)}</td></tr>)}</tbody></table></div></section>
-    <div className="grid gap-5 lg:grid-cols-2"><section><h2 className="mb-2 text-xl font-semibold">Payments (Razorpay reconciliation)</h2><div className="card divide-y divide-line text-sm">{pays.map((p) => <div key={p.id} className="flex justify-between p-3"><span>{p.orderId}<div className="text-xs text-ink/50">{fmtDateTime(p.createdAt)} · {p.method}</div></span><span className="text-right" style={{ fontFamily: "var(--font-mono)" }}>{formatINR(p.amount)}<div className="text-xs text-ink/50">{p.status} · matched</div></span></div>)}</div><p className="mt-1 text-xs text-ink/50">Captured GMV in view: {formatINR(gmv)}</p></section>
-      <section><h2 className="mb-2 text-xl font-semibold">Payouts</h2><div className="card divide-y divide-line text-sm">{po.map((p) => <div key={p.id} className="flex justify-between p-3"><span>{p.method} · {p.utr}<div className="text-xs text-ink/50">{fmtDateTime(p.createdAt)}</div></span><span style={{ fontFamily: "var(--font-mono)" }}>{formatINR(p.amount)} <span className="text-xs text-ink/50">fee {formatINR(p.fee)}</span></span></div>)}{po.length === 0 && <p className="p-3 text-ink/50">No payouts yet.</p>}</div>
-        <h2 className="mb-2 mt-6 text-xl font-semibold">Expense wallet audit</h2><div className="card divide-y divide-line text-sm">{capTasks.map((t) => <div key={t.id} className="flex justify-between p-3"><span>{t.title}</span><span style={{ fontFamily: "var(--font-mono)" }}>cap {formatINR(t.expensesCap)} · spent {formatINR(t.expense?.spent ?? 0)} · refunded {formatINR(t.expense?.refunded ?? 0)}</span></div>)}</div></section></div></div>);
+  const [acc, bal, pays, pos, ex, recent] = await Promise.all([
+    db.select({ a: ledgerEntries.account, d: sql<number>`sum(${ledgerEntries.debit})`, c: sql<number>`sum(${ledgerEntries.credit})` }).from(ledgerEntries).groupBy(ledgerEntries.account),
+    ledgerBalanceCheck(),
+    db.select().from(payments).orderBy(desc(payments.createdAt)),
+    db.select({ p: payouts, h: helpers.displayName }).from(payouts).innerJoin(helpers, eq(helpers.id, payouts.helperId)).orderBy(desc(payouts.createdAt)).limit(20),
+    db.select({ e: expenses, t: tasks.name }).from(expenses).innerJoin(tasks, eq(tasks.id, expenses.taskId)),
+    db.select().from(ledgerEntries).orderBy(desc(ledgerEntries.ts)).limit(20),
+  ]);
+  const get = (a: string) => { const r = acc.find((x) => x.a === a); return r ? Number(r.c) - Number(r.d) : 0; };
+  const captured = pays.filter((p) => p.status === "captured");
+  const gmv = captured.reduce((s, p) => s + p.amount + p.creditsUsed, 0);
+  const cashIn = acc.find((x) => x.a === "customer_cash");
+  const mismatch = Number(cashIn?.d ?? 0) - Number(cashIn?.c ?? 0) !== captured.reduce((s, p) => s + p.amount, 0) - 0;
+  return (
+    <div className="space-y-5"><H1 sub="Double-entry ledger in integer paise. Every journal balances to zero.">Finance</H1>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4"><Tile label="GMV (captured)" value={inr(gmv)} /><Tile label="Platform revenue" value={inr(get("platform_revenue"))} tone="sage" /><Tile label="Helper payable" value={inr(get("helper_payable"))} /><Tile label="GST payable" value={inr(get("tax_payable"))} /></div>
+      <p className={`rounded-xl p-2 text-sm font-bold ${bal.balanced ? "bg-sage" : "bg-brick text-cream"}`}>Ledger {bal.balanced ? "balanced" : "UNBALANCED"}: debits {inr(bal.debit)} = credits {inr(bal.credit)}{mismatch ? " · Razorpay reconciliation mismatch flagged: review payments" : " · Razorpay reconciliation: no mismatches"}</p>
+      <section><h2 className="display text-xl">Accounts</h2><Table cols={["Account", "Debit", "Credit", "Net"]} rows={acc.map((a) => [a.a, inr(Number(a.d)), inr(Number(a.c)), inr(Number(a.c) - Number(a.d))])} /></section>
+      <section><h2 className="display text-xl">Payments</h2><Table cols={["Order", "Method", "Amount", "Credits", "Status", "Webhooks"]} rows={pays.map((p) => [p.orderId.slice(-12), p.method ?? "-", inr(p.amount), inr(p.creditsUsed), <Badge key="s">{p.status}</Badge>, p.webhookEvents.length])} /></section>
+      <section><h2 className="display text-xl">Payout queue</h2><Table cols={["Helper", "Amount", "Method", "Status", "UTR"]} rows={pos.map(({ p, h }) => [h, inr(p.amount), p.method, <Badge key="s">{p.status}</Badge>, p.utr ?? "-"])} /></section>
+      <section><h2 className="display text-xl">Expense wallet audit</h2><Table cols={["Task", "Cap", "Spent", "Approved", "Refunded", "Status"]} rows={ex.map(({ e, t }) => [t, inr(e.cap), inr(e.spent), inr(e.approvedAmount), inr(e.refundedAmount), e.status])} /></section>
+      <section><h2 className="display text-xl">Recent journal lines</h2><Table cols={["When", "Account", "Debit", "Credit", "Memo"]} rows={recent.map((l) => [fmtDateTime(l.ts), l.account, inr(l.debit), inr(l.credit), l.memo])} /></section>
+      <section><h2 className="display text-xl">Exports</h2><p className="text-xs opacity-70">CSV downloads are logged in the audit trail. Ledger and payments need the finance or lead role. GST invoices are generated per plan from the customer order page.</p><div className="mt-2 flex flex-wrap gap-2">{["ledger", "payments", "jobs", "helpers", "customers", "waitlist"].map((x) => <a key={x} className="btn btn-cream btn-sm" href={`/api/ops/export/${x}`}>{x}.csv</a>)}</div></section></div>
+  );
 }

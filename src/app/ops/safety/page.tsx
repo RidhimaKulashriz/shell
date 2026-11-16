@@ -1,18 +1,25 @@
-import Link from "next/link";
+import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { sosEvents, users, taskEvents, tasks } from "@/db/schema";
-import { desc, eq, inArray } from "drizzle-orm";
-import { OpsAction } from "@/components/ops";
-import { fmtDateTime } from "@/lib/utils";
-export const metadata = { title: "Ops: Safety" };
+import { geofenceEvents, sosEvents, users } from "@/db/schema";
+import { Act } from "@/components/ops/Actions";
+import { Badge, H1, Table } from "@/components/ops/ui";
+import { fmtDateTime } from "@/lib/format";
+
+export const metadata = { title: "Safety console" };
+
 export default async function Page() {
-  const s = await db.select().from(sosEvents).orderBy(desc(sosEvents.createdAt)).limit(30);
-  const us = await db.select().from(users); const nm = (id: string) => us.find((u) => u.id === id);
-  const an = await db.select({ e: taskEvents, t: tasks.title }).from(taskEvents).innerJoin(tasks, eq(tasks.id, taskEvents.taskId)).where(inArray(taskEvents.type, ["gps_anomaly", "otp_failed"])).orderBy(desc(taskEvents.createdAt)).limit(20);
-  return (<div className="space-y-6"><h1 className="text-3xl font-semibold text-tide">Safety console</h1>
-    <section className="space-y-3">{s.length === 0 && <p className="text-ink/50">No SOS alerts. Good.</p>}{s.map((x) => <div key={x.id} className={`card p-4 ${x.status === "open" ? "border-2 border-danger bg-[#fdf1ef]" : ""}`}><div className="flex flex-wrap items-center justify-between gap-2"><div><span className={`pill ${x.status === "open" ? "pill-bad" : ""}`}>{x.status}</span> <span className="pill">{x.kind}</span><div className="mt-1 font-semibold">{nm(x.userId)?.name} <span className="font-normal text-ink/60">{nm(x.userId)?.phone}</span></div>{x.taskId && <Link href={`/ops/jobs/${x.taskId}`} className="text-sm underline">Open job</Link>}</div>
-      <div className="flex gap-2">{x.status === "open" && <OpsAction body={{ action: "sos_status", id: x.id, status: "acknowledged" }} className="btn btn-danger btn-sm">Acknowledge</OpsAction>}{x.status !== "resolved" && <OpsAction body={{ action: "sos_status", id: x.id, status: "resolved" }} confirm="Mark this SOS resolved?">Resolve</OpsAction>}</div></div>
-      <ol className="mt-3 space-y-1 text-sm">{x.timeline.map((t, i) => <li key={i}><span className="text-xs text-ink/50">{fmtDateTime(t.at)}</span> · {t.text}</li>)}</ol>
-      <p className="mt-2 text-xs text-ink/60">Response checklist: call the user, call the guard desk, call the trusted contact, log the outcome, file a post-incident report.</p></div>)}</section>
-    <section><h2 className="mb-2 text-xl font-semibold">Geofence and check-in anomalies</h2><div className="card divide-y divide-line">{an.map(({ e, t }) => <div key={e.id} className="flex justify-between p-3 text-sm"><span><Link href={`/ops/jobs/${e.taskId}`} className="font-medium underline">{t}</Link> · {e.note}</span><span className="text-xs text-ink/50">{fmtDateTime(e.createdAt)}</span></div>)}{an.length === 0 && <p className="p-3 text-sm text-ink/50">None.</p>}</div></section></div>);
+  const sos = await db.select({ s: sosEvents, u: users.name, ph: users.phone }).from(sosEvents).innerJoin(users, eq(users.id, sosEvents.userId)).orderBy(desc(sosEvents.createdAt));
+  const geo = await db.select().from(geofenceEvents).orderBy(desc(geofenceEvents.ts)).limit(20);
+  return (
+    <div className="space-y-5"><H1 sub="SOS escalates here within 20 seconds. Every action is timestamped.">Safety console</H1>
+      {sos.map(({ s, u, ph }) => (
+        <div key={s.id} className={`rounded-xl border border-ink/20 p-3 ${s.status === "resolved" ? "bg-cream" : "bg-brick/15"}`}><div className="flex flex-wrap items-center justify-between gap-2"><b className="display text-xl">{u} ({ph})</b><span className="flex gap-2"><Badge tone={s.status === "open" ? "red" : "ink"}>{s.status}</Badge><Badge>{s.kind}</Badge></span></div>
+          {s.points[0] && <p className="mono text-xs">Last location {s.points[s.points.length - 1].lat.toFixed(5)}, {s.points[s.points.length - 1].lng.toFixed(5)}</p>}
+          <ol className="mt-1 list-decimal pl-5 text-sm">{s.timeline.map((t, i) => <li key={i}>{fmtDateTime(t.ts)}: {t.text}</li>)}</ol>
+          <p className="mt-1 text-xs">Response checklist: call customer · call helper · call guard · notify trusted contact · post-incident report</p>
+          {s.status !== "resolved" && <div className="mt-2 flex gap-2"><Act url={`/api/ops/sos/${s.id}`} body={{ action: "ack" }} label="Acknowledge" /><Act url={`/api/ops/sos/${s.id}`} body={{ action: "resolve" }} ask="Resolution / report" label="Resolve" variant="btn-sun" /></div>}{s.report && <p className="mt-1 text-xs">Report: {s.report}</p>}</div>
+      ))}
+      {sos.length === 0 && <p className="hand text-2xl">No active SOS alerts.</p>}
+      <section><h2 className="display text-xl">Geofence events</h2><Table cols={["When", "Fence", "Event"]} rows={geo.map((g) => [fmtDateTime(g.ts), g.geofenceType, g.event])} /></section></div>
+  );
 }

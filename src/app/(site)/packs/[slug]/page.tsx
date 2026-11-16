@@ -1,25 +1,50 @@
 import { notFound } from "next/navigation";
-import { db } from "@/db";
-import { packs } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { Hero, Section, H2, Faq } from "@/components/page";
-import { PackCustomizer } from "@/components/site";
-import { Receipt } from "@/components/ui";
-import { CATALOG } from "@/lib/catalog";
-import { packEstimate } from "@/lib/content";
-import { formatINR, formatRange, formatDuration } from "@/lib/pricing";
-export const dynamic = "force-dynamic";
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) { const [p] = await db.select().from(packs).where(eq(packs.slug, (await params).slug)); return p ? { title: p.name, description: p.description } : {}; }
+import { db } from "@/db";
+import { packs, taskTemplates } from "@/db/schema";
+import { Faq, PageHero, Section } from "@/components/site/Bits";
+import { PackCustomise } from "@/components/PackCustomise";
+import { catalogForClient } from "@/lib/site-data";
+import { activePricing } from "@/lib/data";
+import { jsonLd, meta } from "@/lib/seo";
+import { getLang } from "@/lib/lang";
+
+async function load(slug: string) {
+  const [p] = await db.select().from(packs).where(eq(packs.slug, slug)).limit(1);
+  return p;
+}
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const p = await load((await params).slug);
+  return p ? meta({ title: `${p.nameEn} pack`, description: p.copyEn.slice(0, 155), path: `/packs/${p.slug}` }) : {};
+}
+
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
-  const [p] = await db.select().from(packs).where(eq(packs.slug, (await params).slug)); if (!p) notFound();
-  const e = packEstimate(p.items);
-  const timeline = [...p.items].sort((a, b) => b.offsetHours - a.offsetHours);
-  return (<>
-    <Hero eyebrow="Pack" title={p.name} lead={p.description} />
-    <Section tone="white"><div className="grid items-start gap-10 md:grid-cols-2">
-      <Receipt title={p.name} subtitle="Sample receipt" lines={e.lines.map((l) => ({ name: l.name, detail: formatDuration(l.durationMin), amount: formatRange(l.price), stamped: true }))} fees={[{ label: "Platform fee", amount: formatINR(e.platformFee) }, ...(e.coordinationFee ? [{ label: "Coordination fee", amount: formatINR(e.coordinationFee) }] : [])]} total={formatRange(e.total)} totalLabel="Estimated total" />
-      <div><H2 className="text-tide">How it runs</H2><ol className="mt-6 space-y-5 border-l-2 border-dashed border-euca/40 pl-6">{timeline.map((i) => <li key={i.slug} className="relative"><span className="absolute -left-[2.1rem] top-1 h-3 w-3 rounded-full bg-euca" /><div className="text-xs font-bold uppercase tracking-wider text-euca">{i.offsetHours > 0 ? `T minus ${i.offsetHours} hours` : i.offsetHours === 0 ? "During the event" : `${-i.offsetHours} hours after`}</div><div className="font-semibold">{CATALOG.find((c) => c.slug === i.slug)!.name}</div><div className="text-sm text-ink/70">{i.note}</div></li>)}</ol>
-        <p className="mt-6 text-sm text-ink/70"><strong>Helpers involved:</strong> {p.helperTypes.join(", ")}.</p></div></div></Section>
-    <Section><PackCustomizer items={p.items} packSlug={p.slug} /></Section>
-    <Section tone="cream"><H2 className="text-tide">Questions</H2><div className="mt-6"><Faq items={[{ q: "Can I change the tasks?", a: "Yes. Remove or add tasks before you approve, and the receipt updates instantly." }, { q: "What if my deadline is sooner?", a: "Choose same-day or Rush when you order. The plan is re-timed and the price updates." }, { q: "Is it one helper or many?", a: "Usually several, each matched to their task. You deal with Shell, and we coordinate them." }]} /></div></Section></>);
+  const p = await load((await params).slug);
+  if (!p) notFound();
+  const lang = await getLang();
+  const [catalog, config] = [await catalogForClient(), await activePricing()];
+  void taskTemplates;
+  const sorted = [...p.items].sort((a, b) => a.offsetHours - b.offsetHours);
+  return (
+    <>
+      <PageHero eyebrow={lang === "hi" ? p.nameHi : "Shell pack"} title={p.nameEn} sub={lang === "hi" ? p.copyHi : p.copyEn} />
+      <Section tone="paper">
+        <PackCustomise slug={p.slug} name={p.nameEn} items={p.items} catalog={catalog} config={config} />
+      </Section>
+      <Section tone="dark">
+        <h2 className="display text-4xl md:text-5xl">How the pack runs</h2>
+        <ol className="mt-10 grid gap-4 md:grid-cols-4">
+          {sorted.map((it, i) => (
+            <li key={it.label} className="relative rounded-2xl border border-sage/60 p-4" style={{ transform: `rotate(${[-1, 0.8, -0.5, 1][i % 4]}deg)` }}>
+              <span className="mono text-sm text-sand">{it.offsetHours === 0 ? "T (the day)" : `T ${it.offsetHours < 0 ? "minus" : "plus"} ${Math.abs(it.offsetHours)} hours`}</span>
+              <p className="display mt-1 text-2xl">{it.label}</p>
+            </li>
+          ))}
+        </ol>
+        <p className="mt-8">Helper types involved: {p.helperTypes.join(", ")}.</p>
+      </Section>
+      <Section tone="cream"><h2 className="display mb-6 text-4xl">FAQs</h2><Faq items={p.faqs} /></Section>
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd({ "@context": "https://schema.org", "@type": "Service", name: p.nameEn, description: p.copyEn, areaServed: "Delhi" })} />
+    </>
+  );
 }

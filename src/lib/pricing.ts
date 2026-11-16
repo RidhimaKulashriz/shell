@@ -1,125 +1,170 @@
-// Pricing engine. All money in integer paise.
-// Formula (also documented in /pricing and editable in Ops > Pricing):
-//   task_price   = base_rate x quantity x size_factor x urgency x (1 - circle_discount)
-//   subtotal     = sum(task_price)
-//   platform_fee = max(fee_floor, pct x subtotal)
-//   coordination = flat fee when 3+ tasks or any Managed task
-//   total        = subtotal + travel + platform_fee + coordination + minimum_top_up - promo
+// Pricing engine. Prices ALWAYS come from here, never from the plan-drafting model.
+//
+// task_price      = base_rate x quantity x size_factor
+// subtotal        = sum(task_price)
+// travel          = from the geo layer (0 inside the society)
+// urgency         = normal 1.0 | same_day 1.2 | rush 1.5
+// circle_discount = curve(joiners), capped at maxCircleDiscount
+// platform_fee    = max(fee_floor, percent x subtotal)
+// coordination    = applies when >= 3 tasks or plan is Managed
+// total           = round(subtotal x urgency x (1 - circle_discount)) + travel + platform_fee + coordination
+// minimum order value tops the total up (shown as its own line).
+// All money is integer paise.
+
 export type Urgency = "normal" | "same_day" | "rush";
 export type Size = "small" | "medium" | "large";
 
 export type PricingConfig = {
   version: number;
   urgency: Record<Urgency, number>;
-  sizeFactors: Record<Size, number>;
-  platformFeePct: number;
+  minOrder: number;
   feeFloor: number;
+  feePercent: number;
   coordinationFee: number;
   coordinationMinTasks: number;
-  minOrder: number;
-  circleCurve: { joiners: number; discount: number }[];
-  circleMaxDiscount: number;
-  helperShare: number;
+  circleCurve: { flats: number; discount: number }[];
+  maxCircleDiscount: number;
+  travelPerKm: number;
+  rangePct: number;
+  commissionPct: Record<string, number>;
+  surge: { festival: number; lateNight: number };
+  instantPayoutFeePct: number;
   gstPct: number;
-  travelOutsideSociety: number;
-  holdHours: number;
-  promos: Record<string, { flat?: number; pct?: number; label: string }>;
+  societyOverrides: Record<string, { feeFloor?: number }>;
 };
 
 export const DEFAULT_PRICING: PricingConfig = {
   version: 1,
   urgency: { normal: 1, same_day: 1.2, rush: 1.5 },
-  sizeFactors: { small: 0.8, medium: 1, large: 1.4 },
-  platformFeePct: 0.08,
-  feeFloor: 4900,
-  coordinationFee: 14900,
-  coordinationMinTasks: 3,
   minOrder: 19900,
+  feeFloor: 2900,
+  feePercent: 0.06,
+  coordinationFee: 7900,
+  coordinationMinTasks: 3,
   circleCurve: [
-    { joiners: 1, discount: 0 }, { joiners: 2, discount: 0.05 }, { joiners: 3, discount: 0.09 },
-    { joiners: 4, discount: 0.13 }, { joiners: 5, discount: 0.16 }, { joiners: 6, discount: 0.18 },
+    { flats: 1, discount: 0 },
+    { flats: 2, discount: 0.05 },
+    { flats: 3, discount: 0.1 },
+    { flats: 4, discount: 0.15 },
+    { flats: 5, discount: 0.18 },
+    { flats: 6, discount: 0.2 },
   ],
-  circleMaxDiscount: 0.2,
-  helperShare: 0.8,
-  gstPct: 18,
-  travelOutsideSociety: 0,
-  holdHours: 2,
-  promos: {
-    WELCOME100: { flat: 10000, label: "Rs 100 off your first plan" },
-    TOWERC10: { pct: 0.1, label: "10% off for Tower C" },
-  },
+  maxCircleDiscount: 0.25,
+  travelPerKm: 1500,
+  rangePct: 0.12,
+  commissionPct: { STARTER: 0.28, TRUSTED: 0.25, PRO: 0.22, ELITE: 0.2 },
+  surge: { festival: 1.1, lateNight: 1.15 },
+  instantPayoutFeePct: 0.01,
+  gstPct: 0.18,
+  societyOverrides: {},
 };
 
-export type PriceLineInput = {
-  slug: string; name: string; kind: string; rate: number; mins: number; quantity: number; size: Size;
+export type TemplateLike = {
+  slug: string;
+  name: string;
+  baseRate: number;
+  unit: string;
+  minutesPerUnit: number;
+  sizeFactors: { small: number; medium: number; large: number };
+  managedOnly?: boolean;
 };
-export type PricedLine = PriceLineInput & { basePrice: number; price: number; durationMin: number; helperPayout: number };
+export type LineInput = { template: TemplateLike; qty: number; size: Size };
 
-const rupee = (p: number) => Math.round(p / 100) * 100;
+export type QuoteInput = {
+  lines: LineInput[];
+  urgency?: Urgency;
+  circleJoiners?: number;
+  travelPaise?: number;
+  managed?: boolean;
+  festival?: boolean;
+  config?: PricingConfig;
+};
 
-export function circleDiscount(joiners: number, cfg: PricingConfig = DEFAULT_PRICING): number {
+export type Quote = {
+  lines: { slug: string; name: string; qty: number; size: Size; price: number; minutes: number }[];
+  subtotal: number;
+  urgencyMultiplier: number;
+  circleDiscount: number;
+  adjustedSubtotal: number;
+  travel: number;
+  platformFee: number;
+  coordinationFee: number;
+  minOrderTopUp: number;
+  total: number;
+  range: [number, number];
+  minutes: number;
+  managed: boolean;
+  configVersion: number;
+};
+
+export const roundRupee = (p: number) => Math.round(p / 100) * 100;
+
+export function circleDiscount(joiners: number, cfg: PricingConfig = DEFAULT_PRICING) {
+  if (joiners <= 1) return 0;
+  const curve = [...cfg.circleCurve].sort((a, b) => a.flats - b.flats);
   let d = 0;
-  for (const step of [...cfg.circleCurve].sort((a, b) => a.joiners - b.joiners)) if (joiners >= step.joiners) d = step.discount;
-  return Math.min(d, cfg.circleMaxDiscount);
+  for (const p of curve) if (joiners >= p.flats) d = p.discount;
+  return Math.min(d, cfg.maxCircleDiscount);
 }
 
-export type PlanPrice = {
-  lines: PricedLine[]; urgencyMultiplier: number; circleDiscount: number; subtotal: number; travel: number;
-  platformFee: number; coordinationFee: number; minTopUp: number; promoDiscount: number; total: number;
-  durationMin: number; guarantee: true;
-};
+export function linePrice(l: LineInput) {
+  const factor = l.template.sizeFactors[l.size] ?? 1;
+  const qty = Math.max(1, Math.floor(l.qty));
+  return { price: roundRupee(l.template.baseRate * qty * factor), minutes: Math.round(l.template.minutesPerUnit * qty * (factor > 1 ? 1 + (factor - 1) * 0.6 : 1)) };
+}
 
-export function computePlan(opts: {
-  lines: PriceLineInput[]; urgency?: Urgency; circleJoiners?: number; travel?: number; promo?: string | null;
-  managed?: boolean; config?: PricingConfig;
-}): PlanPrice {
-  const cfg = opts.config ?? DEFAULT_PRICING;
-  const urgency = opts.urgency ?? "normal";
-  const um = cfg.urgency[urgency];
-  const cd = circleDiscount(opts.circleJoiners ?? 1, cfg);
-  const lines: PricedLine[] = opts.lines.map((l) => {
-    const sf = cfg.sizeFactors[l.size] ?? 1;
-    const basePrice = rupee(l.rate * l.quantity * sf);
-    const price = rupee(basePrice * um * (1 - cd));
-    return { ...l, basePrice, price, durationMin: Math.round(l.mins * l.quantity * sf), helperPayout: rupee(price * cfg.helperShare) };
+export function quote(input: QuoteInput): Quote {
+  const cfg = input.config ?? DEFAULT_PRICING;
+  const urgency = input.urgency ?? "normal";
+  const lines = input.lines.map((l) => {
+    const { price, minutes } = linePrice(l);
+    return { slug: l.template.slug, name: l.template.name, qty: Math.max(1, Math.floor(l.qty)), size: l.size, price, minutes };
   });
   const subtotal = lines.reduce((s, l) => s + l.price, 0);
-  const travel = opts.travel ?? cfg.travelOutsideSociety;
-  const platformFee = lines.length ? Math.max(cfg.feeFloor, rupee(cfg.platformFeePct * subtotal)) : 0;
-  const managed = opts.managed || lines.some((l) => l.kind === "managed");
-  const coordinationFee = lines.length >= cfg.coordinationMinTasks || (managed && lines.length >= 2) ? cfg.coordinationFee : 0;
-  let total = subtotal + travel + platformFee + coordinationFee;
-  const minTopUp = lines.length && total < cfg.minOrder ? cfg.minOrder - total : 0;
-  total += minTopUp;
-  let promoDiscount = 0;
-  const promo = opts.promo ? cfg.promos[opts.promo.toUpperCase()] : undefined;
-  if (promo) promoDiscount = Math.min(total, promo.flat ?? rupee((promo.pct ?? 0) * total));
-  total -= promoDiscount;
+  let urgencyMultiplier = cfg.urgency[urgency];
+  if (input.festival) urgencyMultiplier = Math.round(urgencyMultiplier * cfg.surge.festival * 100) / 100;
+  const disc = circleDiscount(input.circleJoiners ?? 1, cfg);
+  const adjustedSubtotal = roundRupee(subtotal * urgencyMultiplier * (1 - disc));
+  const managed = !!input.managed || lines.length >= cfg.coordinationMinTasks || input.lines.some((l) => l.template.managedOnly);
+  const platformFee = lines.length ? roundRupee(Math.max(cfg.feeFloor, cfg.feePercent * subtotal)) : 0;
+  const coordinationFee = managed && lines.length ? cfg.coordinationFee : 0;
+  const travel = input.travelPaise ?? 0;
+  let total = adjustedSubtotal + travel + platformFee + coordinationFee;
+  let minOrderTopUp = 0;
+  if (lines.length && total < cfg.minOrder) {
+    minOrderTopUp = cfg.minOrder - total;
+    total = cfg.minOrder;
+  }
+  const spread = cfg.rangePct;
   return {
-    lines, urgencyMultiplier: um, circleDiscount: cd, subtotal, travel, platformFee, coordinationFee, minTopUp, promoDiscount, total,
-    durationMin: lines.reduce((s, l) => s + l.durationMin, 0), guarantee: true,
+    lines,
+    subtotal,
+    urgencyMultiplier,
+    circleDiscount: disc,
+    adjustedSubtotal,
+    travel,
+    platformFee,
+    coordinationFee,
+    minOrderTopUp,
+    total,
+    range: [roundRupee(total * (1 - spread)), roundRupee(total * (1 + spread))],
+    minutes: lines.reduce((s, l) => s + l.minutes, 0),
+    managed,
+    configVersion: cfg.version,
   };
 }
 
-/** Invariant: total equals lines + fees - promo. */
-export function planBalanced(p: { subtotal: number; travelAmount: number; platformFee: number; coordinationFee: number; minTopUp: number; promoDiscount: number; total: number }, lineSum: number) {
-  return p.subtotal === lineSum && p.total === p.subtotal + p.travelAmount + p.platformFee + p.coordinationFee + p.minTopUp - p.promoDiscount;
+/** Invariant enforced in code: a plan total equals the sum of its lines plus fees. */
+export function planTotalIsConsistent(p: { subtotal: number; urgencyMultiplier: number; circleDiscount: number; travelAmount: number; platformFee: number; coordinationFee: number; total: number }, minOrder = DEFAULT_PRICING.minOrder) {
+  const expected = roundRupee(p.subtotal * p.urgencyMultiplier * (1 - p.circleDiscount)) + p.travelAmount + p.platformFee + p.coordinationFee;
+  return p.total === expected || p.total === Math.max(expected, minOrder);
 }
 
-/** Range shown before approval. */
-export function priceRange(total: number): [number, number] {
-  return [rupee(total * 0.92), rupee(total * 1.1)];
+export function helperPayout(price: number, level: string, cfg: PricingConfig = DEFAULT_PRICING) {
+  return Math.round(price * (1 - (cfg.commissionPct[level] ?? cfg.commissionPct.STARTER)));
 }
 
-export function formatINR(paise: number): string {
-  return "₹" + Math.round(paise / 100).toLocaleString("en-IN");
-}
-export function formatRange(total: number): string {
-  const [a, b] = priceRange(total);
-  return `${formatINR(a)} – ${formatINR(b)}`;
-}
-export function formatDuration(min: number): string {
-  if (min < 60) return `${min} min`;
-  const h = Math.floor(min / 60), m = min % 60;
-  return m ? `${h}h ${m}m` : `${h}h`;
+/** Estimator: a transparent range, plus how much each Circle joiner would save. */
+export function circleSavings(subtotal: number, cfg: PricingConfig = DEFAULT_PRICING) {
+  return cfg.circleCurve.map((p) => ({ flats: p.flats, perFlat: roundRupee(subtotal * (1 - circleDiscount(p.flats, cfg))) }));
 }

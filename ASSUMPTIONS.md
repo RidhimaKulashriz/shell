@@ -1,31 +1,46 @@
-# Assumptions and deliberate choices
+# Assumptions, deviations and what is not built
 
-The brief was very large. These are the decisions made so the product is usable and honest about what is real and what is mocked.
+Decided without asking, as the brief allows. Safer and simpler options were chosen.
 
-## Stack changes
-- **Drizzle ORM instead of Prisma, and plain Postgres instead of PostGIS.** The runtime provides Drizzle and a Postgres without the PostGIS extension. Locations are stored as `lat/lng` doubles. Distances use haversine. "H3" hexes are replaced by a built-in hex grid (`src/lib/geo.ts`, resolutions 8 and 9) with the same purpose: privacy-safe heatmaps. Swap in `h3-js` and PostGIS geography columns when the extension is available.
-- **Single Next.js app, not a pnpm/Turborepo monorepo.** Everything (site, customer app, helper app, ops, society portal, API) lives in one deployable app.
-- **Polling instead of SSE/WebSockets.** Live pages refresh every 4 to 8 seconds. The API shape makes SSE a drop-in later.
-- **Custom SVG maps instead of MapLibre tiles.** The society map and waitlist hex map are brand-styled SVG, so there is no tile cost or key. A `MapProvider` can replace them.
-- **No BullMQ/Redis.** Time-based rules (auto-approve after 2 hours, re-offer stale offers, Circle expiry) run lazily when ops, helper and customer pages load (`autoApproveDue`, `reofferStale`). Move them to a queue when Redis is available.
+## Deviations from the brief
+- **Drizzle ORM instead of Prisma, plain Postgres instead of PostGIS, single Next.js app instead of a pnpm/Turborepo monorepo.**
+  The managed environment provides Drizzle and Postgres without PostGIS. Points are stored as lat/lng doubles. `lib/geo.ts`
+  implements haversine, point-in-polygon, an H3-style hex index (res 8 and 9, same cell sizes as H3) and a nearest-neighbour + 2-opt
+  stop ordering. Swapping to PostGIS `geography` columns and real H3 is a schema change, not a rewrite.
+- **No Redis/BullMQ.** Offer expiry, re-offer and no-show rules are evaluated on read and on action. A queue is the next step.
+- **Map provider is a custom brand-palette SVG** (works offline, no tile key, fast on cheap Android). The `PulseMap` props are the MapProvider
+  seam for MapLibre GL with MapTiler/Stadia tiles. Google Routes is not called: travel time is estimated from distance in `lib/geo.ts`.
+- **Language:** the interface is written in plain English. A Hindi (Devanagari) toggle is stored per user and in a cookie and covers the global shell,
+  key headings, FAQs, notification catalogue and category intros. The keyword planner still understands Hindi and romanised Hindi input.
+  hreflang uses `?lang=` URLs.
+- **Auth** is phone OTP with httpOnly session cookies (hashed in DB) and role checks in server components and API wrappers.
+  Staff two-factor is not built. Only CUSTOMER and HELPER can self-register; staff accounts are seeded.
+- **Photos** are compressed in the browser and stored as data URLs. Swap the `photos.url` writer for signed S3 uploads.
+- **Receipt OCR** is manual line entry by the helper with an itemised approval flow. The OCR provider plugs in at `tasks/[id]/expense`.
+- **PDF resume** is a print-optimised page (`/p/[slug]/resume`) with Save as PDF.
+- **Plan engine** is an offline keyword planner behind the `PlanLLM` interface. Prices never come from it. Low confidence, banned words
+  or zero matches set `needsHuman`, and every plan is reviewed by ops before the customer sees it.
 
-## Design and language
-- The UI is **English only**, as requested. The Hindi toggle from the brief is not built. Hinglish and Hindi *input* is still understood by the plan engine (for example "ghar saaf karwana hai", "bartan", "sabzi").
-- The design was toned down from "paper and ink" to a **professional** look: same palette, receipts as a signature element, restrained motion, no rotated stickers except small accents.
-- Fonts: Fraunces (headlines), DM Sans (UI), DM Mono (receipts and prices), Caveat (only on Shell Notes and a few handwritten accents).
+## Mocked (works end to end, needs a key to go live)
+OTP delivery, Razorpay orders and webhook (signature verification is real HMAC), WhatsApp/push sending, KYC (only a reference and verified
+flag are stored, never an ID number), masked calling (UI shows an info dialog), speech-to-text (browser SpeechRecognition hi-IN),
+penny-drop verification, GST invoice generation.
 
-## Product choices
-- **Ease of use first.** The customer flow is: write a message, answer at most 3 chip questions, review the plan, approve and pay. Everything else is secondary.
-- **Human review is a feature flag** (`human_review`). The brief says humans approve every plan. For a self-serve demo it is **off by default**; turn it on in Ops > Settings for production. Low-confidence drafts (photo-only requests, weak matches) always go to a human regardless of the flag.
-- **Geofence enforcement** is a flag (`geofence_enforced`), off by default so the demo works from a desk. Turn on for production. The check (150 m) is implemented.
-- **Demo mode** (`demo_mode`) shows demo logins and "simulate the next helper step" buttons. Turn it off before real launch.
-- **Plan engine** is a deterministic keyword engine with fuzzy matching, behind `draftFromText`. An LLM can sit behind the same function. Prices never come from the model.
-- **Photo-to-plan** is mocked: photos produce low-confidence suggestions that route to a human. Voice uses the browser Web Speech API where available.
-- **Door OTP** is derived with an HMAC of the task id (never stored in plain text; only its hash is stored).
-- **Payments** use a mock Razorpay behind `createOrder`/`capturePayment`. The webhook route verifies signatures and is idempotent. Money is integer paise, with a double-entry ledger and an escrow account.
-- **Expense caps** are held in addition to the plan total and refunded to the Shell Wallet when unspent.
-- **OTP login** uses a mock provider: the code is `123456` when no provider key is set. After 3 wrong codes the code is locked.
-- **Waitlist, demo data.** The seeded waitlist (73 rows), helpers (10), completed jobs and reviews are **demo data**. Public counters read the database as it is. Use Ops > Settings > "Clear demo waitlist data" before launch.
-- **KYC, college ID, selfie liveness and payout verification** are simulated. Only a reference and a verified flag are ever stored. No raw Aadhaar is accepted or stored.
-- **Not built**: Routines manager (shown as "Coming soon", per the brief), Shell Plus, Shell Wrapped, shake-to-SOS on iOS permissions flow, receipt OCR (items are typed by the helper), PDF export (use Print to PDF on the Skill Passport), Playwright tests (a scripted end-to-end flow is in `scripts/e2e.ts`), MDX CMS (guides are typed content), push/WhatsApp delivery (in-app inbox is real, providers plug into `notify()`).
-- Legal pages are templates marked as drafts that need lawyer review.
+## Real
+Pricing engine with versioned config in the database, double-entry ledger with balanced journals, state machines with guards, geofenced
+check-in (150 m) + door OTP + 3-strike alert, adaptive location pings with spoof, drift and impossible-speed checks, anti-bypass scanner
+with blur-and-warn and fraud alerts, escrow release after approval, Circle fill/confirm logic, idempotent checkout, signed idempotent webhook,
+audit log (including staff access to location data), dispatch scoring with a plain-language "why we picked", rate limits, CSRF guard,
+DPDP export and 7-day delete request, consent, privacy-safe waitlist hex map (hexes under 3 people hidden).
+
+## Not built yet (honest list)
+- Split payment with flatmates, Razorpay reconciliation against the live API (wallet top-up, CSV exports and a printable GST invoice are built)
+- Voice notes in chat, real-time translation (stored `translatedBody` is displayed when present), WebSocket channels (SSE is used for tracking)
+- Shell Rush pricing flow and 90-minute countdown beyond the helper opt-in and the 1.5x multiplier
+- Ghost Jobs lockbox OTP flow beyond the key-handling preference, receipt OCR, helper timetable image import
+- Staff 2FA, saved views, drag-and-drop on the dispatch board (assignment uses a reason form), zone polygon drawing editor
+- Location ping partitioning and the 30-day purge job (documented in the privacy policy, needs a cron)
+- Offline-cached map tiles per tower (the SVG map needs none; entrance photos are placeholders)
+- Playwright browser E2E (the critical flow is covered at API level), Lighthouse CI budgets, axe in CI
+- Legal pages are templates marked as drafts and need lawyer review.
+- Seeded demo waitlist rows are labelled `demo`. Counters on the site only show when above 10, and no number is invented.

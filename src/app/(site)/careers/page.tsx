@@ -1,8 +1,19 @@
-import Link from "next/link";
-import { Hero, Section, H2 } from "@/components/page";
-export const metadata = { title: "Careers", description: "Join Shell early." };
+import { EnquiryForm } from "@/components/EnquiryForm";
+import { PageHero, Section } from "@/components/site/Bits";
+import { Pill } from "@/components/ui";
+import { meta } from "@/lib/seo";
+
+export const metadata = meta({ title: "Careers at Shell", description: "Open roles at Shell and a call to be one of our first 20 helpers.", path: "/careers" });
+
 export default function Page() {
-  return (<><Hero eyebrow="Careers" title="Help us build the most trusted service in the neighbourhood." />
-    <Section tone="white"><H2 className="text-tide">Open roles</H2><div className="mt-6 divide-y divide-line border-y border-line">{[["Operations associate, Delhi", "Run daily plans, dispatch and support"], ["Community lead, societies", "Onboard societies and guards"], ["Full-stack engineer", "Next.js, Postgres, maps"]].map(([a, b]) => <div key={a} className="flex flex-wrap items-center justify-between gap-2 py-4"><div><div className="font-semibold">{a}</div><div className="text-sm text-ink/60">{b}</div></div><Link href="/contact" className="btn btn-ghost btn-sm">Apply</Link></div>)}</div></Section>
-    <Section tone="cream"><H2 className="text-tide">Be one of the first 20 helpers</H2><p className="mt-3 max-w-xl text-ink/75">Early helpers get priority offers and a founding badge on their Skill Passport.</p><Link href="/login?as=helper&next=/helper/apply" className="btn btn-primary mt-5">Apply as a helper</Link></Section></>);
+  return (
+    <>
+      <PageHero eyebrow="work with us" title="The first" em="twenty helpers." sub="We are looking for the first 20 helpers in the pilot society. Students and freelancers welcome."><Pill href="/earn/apply" variant="sun">Become a helper</Pill></PageHero>
+      <Section tone="paper">
+        <h2 className="display text-3xl">Open roles</h2>
+        <div className="mt-6 grid gap-4 md:grid-cols-2">{[["Ops associate, Delhi", "Review plans, run dispatch, talk to neighbours. Fluent Hindi and English required."], ["Community lead, pilot society", "Be the face of Shell with the RWA, guards and residents."], ["Full-stack engineer", "Next.js, Postgres, a love for small details."], ["Trust and safety analyst", "Own verification, SOS drills and the leakage monitor."]].map(([t, d]) => <div key={t} className="rounded-2xl border border-ink/20 bg-cream p-5"><b className="display text-xl">{t}</b><p className="mt-1">{d}</p></div>)}</div>
+      </Section>
+      <Section tone="cream"><div className="mx-auto max-w-xl"><EnquiryForm kind="careers" cta="Apply" fields={[{ name: "name", label: "Name", required: true }, { name: "email", label: "Email", type: "email", required: true }, { name: "role", label: "Role you want" }, { name: "message", label: "Why Shell?", type: "textarea" }]} /></div></Section>
+    </>
+  );
 }

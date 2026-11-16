@@ -21,8 +21,8 @@ jobs:
       - run: npx tsc --noEmit
       - run: npx vitest run
       - run: npm run build
-      - name: End-to-end critical flow (request, plan, pay, track, complete, rate)
+      - name: e2e (API level critical flow)
         run: |
           npm run start &
-          for i in $(seq 1 40); do curl -sf http://localhost:3000/api/health && break; sleep 2; done
-          npx tsx scripts/e2e.ts
+          npx wait-on http://localhost:3000/api/health
+          npx playwright test

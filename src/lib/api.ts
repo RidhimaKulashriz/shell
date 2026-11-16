@@ -1,54 +1,76 @@
-import { NextResponse } from "next/server";
-import { getUser, type SessionUser } from "./auth";
-import type { Role } from "@/db/schema";
+import { NextRequest } from "next/server";
+import { ZodError, type ZodType } from "zod";
+import { getSessionUser, type SessionUser } from "@/lib/auth";
+import { ensureSeed } from "@/lib/boot";
 
-export class ApiError extends Error {
-  constructor(public code: string, message: string, public status = 400) { super(message); }
+export class AppError extends Error {
+  constructor(
+    public status: number,
+    public code: string,
+    message: string,
+    public messageHi?: string,
+  ) {
+    super(message);
+  }
 }
+
 const buckets = new Map<string, { n: number; reset: number }>();
 export function rateLimit(key: string, max: number, windowMs: number) {
   const now = Date.now();
   const b = buckets.get(key);
-  if (!b || b.reset < now) { buckets.set(key, { n: 1, reset: now + windowMs }); return; }
-  if (++b.n > max) throw new ApiError("rate_limited", "Too many attempts. Please wait a moment and try again.", 429);
+  if (!b || b.reset < now) {
+    buckets.set(key, { n: 1, reset: now + windowMs });
+    return;
+  }
+  if (++b.n > max) throw new AppError(429, "rate_limited", "Too many tries. Please wait a moment.", "बहुत ज़्यादा कोशिशें। थोड़ा रुकिए।");
 }
 
-type Ctx<P> = { req: Request; user: SessionUser | null; params: P; body: any; ip: string };
+export const clientIp = (req: Request) => req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
 
-export function route<P = Record<string, string>>(
-  opts: { roles?: Role[]; limit?: [number, number] },
-  fn: (c: Ctx<P> & { user: SessionUser }) => Promise<unknown>,
-  allowAnon?: false,
-): (req: Request, ctx: { params: Promise<P> }) => Promise<Response>;
-export function route<P = Record<string, string>>(
-  opts: { roles?: Role[]; limit?: [number, number] },
-  fn: (c: Ctx<P>) => Promise<unknown>,
-  allowAnon: true,
-): (req: Request, ctx: { params: Promise<P> }) => Promise<Response>;
-export function route<P>(opts: { roles?: Role[]; limit?: [number, number] }, fn: (c: any) => Promise<unknown>, allowAnon = false) {
-  return async (req: Request, ctx: { params: Promise<P> }) => {
+type Ctx<P> = { req: NextRequest; params: P; user: SessionUser | null; ip: string };
+type Opts = { roles?: string[]; limit?: { key: string; max: number; windowMs: number }; csrf?: boolean; public?: boolean };
+
+export function api<P extends Record<string, string | string[]> = Record<string, never>>(fn: (c: Ctx<P>) => Promise<unknown>, opts: Opts = {}) {
+  return async (req: NextRequest, ctx: { params: Promise<P> }): Promise<Response> => {
+    const requestId = crypto.randomUUID().slice(0, 8);
     try {
-      const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
-      if (req.method !== "GET") {
-        const origin = req.headers.get("origin"), host = req.headers.get("host");
-        if (origin && host && new URL(origin).host !== host && !req.url.includes("/api/webhooks/"))
-          throw new ApiError("csrf", "Request blocked for your safety.", 403);
+      await ensureSeed();
+      const ip = clientIp(req);
+      if (opts.limit) rateLimit(`${opts.limit.key}:${ip}`, opts.limit.max, opts.limit.windowMs);
+      // CSRF: cookie-authenticated writes must be same-origin (Sec-Fetch-Site) or carry a matching Origin.
+      if (opts.csrf !== false && !["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+        const site = req.headers.get("sec-fetch-site");
+        const origin = req.headers.get("origin");
+        const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+        if (site === "cross-site" || (!site && origin && host && new URL(origin).host !== host)) throw new AppError(403, "csrf", "Cross-site request blocked.");
       }
-      const [max, win] = opts.limit ?? [120, 60000];
-      rateLimit(`${ip}:${new URL(req.url).pathname}`, max, win);
-      const user = await getUser();
-      if (!allowAnon) {
-        if (!user) throw new ApiError("unauthenticated", "Please sign in to continue.", 401);
-        if (opts.roles && !opts.roles.includes(user.role)) throw new ApiError("forbidden", "You do not have access to this.", 403);
-      }
-      let body: any = {};
-      if (req.method !== "GET" && req.method !== "DELETE") body = await req.json().catch(() => ({}));
-      const data = await fn({ req, user, params: await ctx.params, body, ip });
-      return data instanceof Response ? data : NextResponse.json(data ?? { ok: true });
+      const user = await getSessionUser();
+      if (opts.roles && (!user || (!opts.roles.includes(user.role) && user.role !== "SUPER_ADMIN"))) throw new AppError(user ? 403 : 401, user ? "forbidden" : "unauthenticated", user ? "You do not have access." : "Please log in.", user ? "आपके पास अनुमति नहीं है।" : "कृपया लॉग इन करें।");
+      const params = (await ctx?.params) ?? ({} as P);
+      const out = await fn({ req, params, user, ip });
+      const res = out instanceof Response ? out : Response.json(out ?? { ok: true });
+      res.headers.set("x-request-id", requestId);
+      return res;
     } catch (e) {
-      if (e instanceof ApiError) return NextResponse.json({ error: { code: e.code, message: e.message } }, { status: e.status });
-      console.error("api error", e);
-      return NextResponse.json({ error: { code: "server_error", message: "Something went wrong on our side. Please try again." } }, { status: 500 });
+      if (e instanceof AppError) return Response.json({ error: { code: e.code, message: e.message, messageHi: e.messageHi ?? e.message, requestId } }, { status: e.status });
+      if (e instanceof ZodError) return Response.json({ error: { code: "validation_error", message: e.issues[0]?.message ?? "Invalid input", messageHi: "जानकारी सही नहीं है", fields: e.issues.map((i) => ({ path: i.path.join("."), message: i.message })), requestId } }, { status: 400 });
+      console.error(JSON.stringify({ level: "error", requestId, msg: e instanceof Error ? e.message : String(e) }));
+      return Response.json({ error: { code: "internal", message: "Something went wrong on our side.", messageHi: "हमारी तरफ़ से कुछ गड़बड़ हो गई।", requestId } }, { status: 500 });
     }
   };
+}
+
+export async function body<T>(req: Request, schema: ZodType<T>): Promise<T> {
+  let raw: unknown = {};
+  try {
+    raw = await req.json();
+  } catch {
+    /* empty body */
+  }
+  return schema.parse(raw);
+}
+
+export function need<T>(v: T | null | undefined, what = "Item"): T {
+  if (v === null || v === undefined) throw new AppError(404, "not_found", `${what} not found.`, "नहीं मिला।");
+  return v;
 }

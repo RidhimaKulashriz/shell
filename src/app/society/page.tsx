@@ -1,30 +1,33 @@
-import { requireRole } from "@/lib/auth";
+import { and, count, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import * as S from "@/db/schema";
-import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
-import { Logo } from "@/components/icons";
-import { LogoutButton } from "@/components/LogoutButton";
-import { formatINR } from "@/lib/pricing";
-export const metadata = { title: "Society partner" };
-export const dynamic = "force-dynamic";
+import { addresses, announcements, circles, customerProfiles, helpers, plans, societies, tasks, towers } from "@/db/schema";
+import { Act } from "@/components/ops/Actions";
+import { H1, Table, Tile } from "@/components/ops/ui";
+import { Wordmark } from "@/components/Icon";
+import { requireUser } from "@/lib/auth";
+import { inr } from "@/lib/format";
+
+export const metadata = { title: "Society partner portal", robots: { index: false } };
+
 export default async function Page() {
-  const u = await requireRole(["SOCIETY_PARTNER"], "/society");
-  const [soc] = await db.select().from(S.societies).where(eq(S.societies.id, u.societyId!));
-  const res = await db.select().from(S.users).where(eq(S.users.societyId, soc.id));
-  const custIds = res.filter((r) => r.role === "CUSTOMER").map((r) => r.id);
-  const verified = custIds.length ? await db.select({ n: count() }).from(S.addresses).where(and(eq(S.addresses.societyId, soc.id), sql`${S.addresses.verifiedAt} is not null`)) : [{ n: 0 }];
-  const jobs = custIds.length ? await db.select().from(S.tasks).where(inArray(S.tasks.customerId, custIds)) : [];
-  const done = jobs.filter((j) => j.status === "approved");
-  const roster = done.length ? await db.select({ h: S.helperProfiles, u: S.users }).from(S.helperProfiles).innerJoin(S.users, eq(S.users.id, S.helperProfiles.userId)).where(inArray(S.helperProfiles.userId, [...new Set(done.map((d) => d.helperId!).filter(Boolean))])) : [];
-  const revs = custIds.length ? await db.select().from(S.reviews).orderBy(desc(S.reviews.createdAt)).limit(5) : [];
-  const circ = await db.select({ t: S.towers.name, n: count() }).from(S.circles).innerJoin(S.towers, eq(S.towers.id, S.circles.towerId)).where(eq(S.circles.societyId, soc.id)).groupBy(S.towers.name);
-  const fees = done.reduce((s, j) => s + j.feeShare + (j.price - j.helperPayout), 0);
-  const share = Math.round(fees * 0.05);
-  return (<div className="min-h-screen bg-bone"><header className="flex items-center justify-between border-b border-line bg-white px-5 py-3"><Logo /><div className="flex items-center gap-3 text-sm"><span className="font-semibold">{soc.name}</span><LogoutButton /></div></header>
-    <main className="mx-auto max-w-5xl space-y-6 px-5 py-8"><h1 className="text-3xl font-semibold text-tide">Society dashboard</h1>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{[["Verified residents", verified[0].n], ["Jobs completed", done.length], ["Active helpers who served here", roster.length], ["Revenue share (5%)", formatINR(share)]].map(([l, v]) => <div key={String(l)} className="card p-4"><div className="text-xs font-semibold uppercase tracking-wider text-ink/50">{l}</div><div className="serif text-3xl font-bold">{v}</div></div>)}</div>
-      <section className="card p-5"><h2 className="font-semibold">Allowed helper roster</h2><p className="text-sm text-ink/60">Verified helpers who have worked in your society. Contact Shell to block anyone.</p><ul className="mt-3 divide-y divide-line text-sm">{roster.map(({ h, u: hu }) => <li key={hu.id} className="flex justify-between py-2"><span>{hu.name}</span><span className="text-ink/60">{h.level.toLowerCase()} · ★ {h.ratingAvg.toFixed(1)} · ID verified</span></li>)}{roster.length === 0 && <li className="py-2 text-ink/50">No jobs completed yet.</li>}</ul></section>
-      <div className="grid gap-5 md:grid-cols-2"><section className="card p-5"><h2 className="font-semibold">Circle activity by tower</h2><ul className="mt-2 text-sm">{circ.map((c) => <li key={c.t} className="flex justify-between border-t border-line py-1"><span>{c.t}</span><span className="pill">{c.n} circles</span></li>)}{circ.length === 0 && <li className="text-ink/50">None yet.</li>}</ul></section>
-        <section className="card p-5"><h2 className="font-semibold">Recent resident feedback</h2><ul className="mt-2 space-y-2 text-sm">{revs.map((r) => <li key={r.id}>★ {r.rating} {r.note || r.tags.join(", ")}</li>)}</ul></section></div>
-      <section className="card p-5"><h2 className="font-semibold">Gates and guard desks</h2><ul className="mt-2 text-sm">{soc.gates.map((g) => <li key={g.name} className="border-t border-line py-1">{g.name}: {g.hours}. {g.rules}</li>)}</ul><p className="mt-2 text-xs text-ink/50">Gate passes are sent to the guard desk automatically for every Shell job.</p></section></main></div>);
+  await requireUser(["SOCIETY_PARTNER"], "/app/login");
+  const [s] = await db.select().from(societies).where(eq(societies.status, "pilot")).limit(1);
+  const [tw, addrs, cs, hs, an] = await Promise.all([db.select().from(towers).where(eq(towers.societyId, s.id)), db.select().from(addresses).where(eq(addresses.societyId, s.id)), db.select().from(circles).where(eq(circles.societyId, s.id)), db.select().from(helpers).where(eq(helpers.status, "active")), db.select().from(announcements).where(eq(announcements.societyId, s.id))]);
+  const custIds = addrs.map((a) => a.userId);
+  const ps = custIds.length ? await db.select().from(plans).where(and(inArray(plans.customerId, custIds), eq(plans.status, "approved"))) : [];
+  const [{ n: jobs }] = await db.select({ n: count() }).from(tasks).where(eq(tasks.status, "approved"));
+  const gmv = ps.reduce((a, p) => a + p.total, 0);
+  const share = Math.round((gmv * s.revenueSharePct) / 100);
+  void customerProfiles;
+  return (
+    <main id="main" className="mx-auto max-w-5xl space-y-5 bg-paper p-5 md:p-8">
+      <div className="text-forest"><Wordmark size={30} /></div><H1 sub={`${s.name}. Revenue share ${s.revenueSharePct}% of fees goes to the society fund.`}>Society partner portal</H1>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4"><Tile label="Verified residents" value={addrs.filter((a) => a.verifiedAt).length} /><Tile label="Jobs done" value={Number(jobs)} tone="sage" /><Tile label="Plans GMV" value={inr(gmv)} /><Tile label="Society fund share" value={inr(share)} tone="sand" /></div>
+      <section><h2 className="display text-xl">Resident list (verification)</h2><Table cols={["Tower", "Floor", "Flat", "Verified"]} rows={addrs.map((a) => [tw.find((t) => t.id === a.towerId)?.name ?? "-", a.floor, a.flat, a.verifiedAt ? "verified" : "pending"])} /></section>
+      <section><h2 className="display text-xl">Allowed helper roster</h2><Table cols={["Helper", "Level", "Rating", "Gate pass"]} rows={hs.map((h) => [h.displayName, h.level, h.ratingAvg.toFixed(1), <span key={h.id} className="stamp">approved</span>])} /></section>
+      <section><h2 className="display text-xl">Circle activity per tower</h2><Table cols={["Circle", "Tower", "Flats", "Status"]} rows={cs.map((c) => [c.title, tw.find((t) => t.id === c.towerId)?.name ?? "-", `${c.currentFlats}/${c.maxFlats}`, c.status])} /></section>
+      <section><h2 className="display text-xl">Announcements</h2>{an.map((a) => <p key={a.id} className="note mt-3 !p-3">{a.text}</p>)}<p className="mt-2 text-xs">Broadcasts to residents are sent by Shell ops on your request, in English and Hindi.</p></section>
+      <Act url="/api/auth/logout" label="Log out" variant="btn-ghost" />
+    </main>
+  );
 }

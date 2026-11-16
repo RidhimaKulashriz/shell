@@ -1,9 +1,20 @@
-// Minimal service worker: caches the app shell and shows a basic offline page when the network is gone.
+// Shell PWA service worker: cache the shell, serve an offline page, queue nothing silently.
 const CACHE = "shell-v1";
-self.addEventListener("install", (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/offline.html", "/icon.svg"]))); self.skipWaiting(); });
-self.addEventListener("activate", (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k))))); self.clients.claim(); });
+const OFFLINE = "/offline";
+self.addEventListener("install", (e) => {
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll([OFFLINE, "/icon.svg"])).then(() => self.skipWaiting()));
+});
+self.addEventListener("activate", (e) => {
+  e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
+});
 self.addEventListener("fetch", (e) => {
-  const r = e.request;
-  if (r.method !== "GET" || new URL(r.url).pathname.startsWith("/api/")) return;
-  if (r.mode === "navigate") e.respondWith(fetch(r).catch(() => caches.match("/offline.html")));
+  const req = e.request;
+  if (req.method !== "GET" || new URL(req.url).pathname.startsWith("/api/")) return;
+  if (req.mode === "navigate") {
+    e.respondWith(fetch(req).catch(() => caches.match(OFFLINE)));
+    return;
+  }
+  if (/\.(?:js|css|svg|woff2?)$/.test(req.url) || req.url.includes("/_next/static/")) {
+    e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((res) => { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); return res; })));
+  }
 });

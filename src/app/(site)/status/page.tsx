@@ -1,11 +1,19 @@
-import { db } from "@/db";
 import { sql } from "drizzle-orm";
-export const metadata = { title: "Status" };
-export const dynamic = "force-dynamic";
-export default async function Status() {
-  let ok = true; try { await db.execute(sql`select 1`); } catch { ok = false; }
-  const rows = [["Website and app", ok], ["Database", ok], ["Payments (Razorpay)", true], ["WhatsApp messaging", true], ["SOS alerts", true]] as const;
-  return (<section className="mx-auto max-w-2xl px-5 py-16"><h1 className="text-4xl font-semibold text-tide">System status</h1>
-    <p className="mt-2 text-ink/70">{ok ? "All systems are working normally." : "We're having trouble. We're on it."}</p>
-    <ul className="card mt-6 divide-y divide-line">{rows.map(([n, g]) => <li key={n} className="flex items-center justify-between p-4"><span>{n}</span><span className={`pill ${g ? "" : "pill-bad"}`}>{g ? "Operational" : "Issue"}</span></li>)}</ul></section>);
+import { db } from "@/db";
+import { PageHero, Section } from "@/components/site/Bits";
+import { Stamp } from "@/components/ui";
+import { meta } from "@/lib/seo";
+
+export const metadata = meta({ title: "Status", description: "Live status of Shell services.", path: "/status" });
+
+export default async function Page() {
+  let dbOk = true;
+  try { await db.execute(sql`select 1`); } catch { dbOk = false; }
+  const rows: [string, boolean, string][] = [["Website", true, "ok"], ["Database", dbOk, dbOk ? "ok" : "down"], ["Payments (Razorpay)", true, process.env.RAZORPAY_KEY_ID ? "live" : "mock mode"], ["WhatsApp notifications", true, process.env.WHATSAPP_TOKEN ? "live" : "mock mode"], ["Maps", true, "brand SVG map"], ["SOS pipeline", true, "ok, 20 second target"]];
+  return (
+    <>
+      <PageHero eyebrow="is everything working?" title="System" em="status." />
+      <Section tone="paper"><div className="receipt scallop-b mx-auto max-w-lg">{rows.map(([n, ok, note]) => <div key={n} className="receipt-line"><span>{n}</span><span className="leader" /><Stamp label={ok ? note : "down"} tone={ok ? "green" : "brick"} delay={0} /></div>)}</div></Section>
+    </>
+  );
 }
