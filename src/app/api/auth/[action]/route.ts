@@ -17,7 +17,10 @@ export const POST = api<{ action: string }>(async ({ req, params }) => {
     const r = await requestOtp(phone, "login");
     if ("locked" in r) throw new AppError(429, "locked", "Too many wrong tries. Try again in 10 minutes.", "बहुत ग़लत कोशिशें। 10 मिनट बाद आइए।");
     if ("wait" in r) throw new AppError(429, "wait", `Please wait ${r.seconds} seconds before resending.`);
-    return { sent: true, channel: "whatsapp", devCode: r.devCode };
+    if (process.env.ALLOW_DEV_OTP === "true" && "devCode" in r && r.devCode) {
+      return { sent: true, devCode: r.devCode };
+    }
+    return { sent: true };
   }
   if (params.action === "verify") {
     if (!b.code) throw new AppError(400, "code_required", "Enter the 6-digit OTP");
