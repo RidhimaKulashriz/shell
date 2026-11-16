@@ -939,3 +939,14 @@ export const opsNotes = pgTable("ops_notes", {
   body: text("body").notNull(),
   createdAt: createdAt(),
 });
+
+export const notifyRequests = pgTable(
+  "notify_requests",
+  {
+    id: pk(),
+    phone: text("phone").notNull(),
+    serviceSlug: text("service_slug").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("notify_phone_service_uq").on(t.phone, t.serviceSlug)],
+);
