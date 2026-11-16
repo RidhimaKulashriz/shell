@@ -950,3 +950,40 @@ export const notifyRequests = pgTable(
   },
   (t) => [uniqueIndex("notify_phone_service_uq").on(t.phone, t.serviceSlug)],
 );
+
+export const bookings = pgTable(
+  "bookings",
+  {
+    id: pk(),
+    customerId: uuid("customer_id").notNull(),
+    serviceSlug: text("service_slug").notNull(),
+    serviceName: text("service_name").notNull(),
+    price: integer("price").notNull(),
+    quantity: integer("quantity").notNull().default(1),
+    subtotal: integer("subtotal").notNull(),
+    platformFee: integer("platform_fee").notNull(),
+    discount: integer("discount").notNull().default(0),
+    total: integer("total").notNull(),
+    slotStart: tz("slot_start").notNull(),
+    slotEnd: tz("slot_end").notNull(),
+    slotKey: text("slot_key").notNull(),
+    address: text("address").notNull(),
+    lat: doublePrecision("lat").notNull(),
+    lng: doublePrecision("lng").notNull(),
+    status: text("status").notNull().default("RECEIVED"), // RECEIVED | ASSIGNED | IN_PROGRESS | COMPLETED | CANCELLED
+    doorOtpHash: text("door_otp_hash"),
+    doorOtpPlain: text("door_otp_plain"), // only for ops/demo, gated by ALLOW_DEV_OTP
+    otpFailures: integer("otp_failures").notNull().default(0),
+    helperId: uuid("helper_id"),
+    // payments (Step 8) — UPI pending by default, Razorpay on demand
+    paymentStatus: text("payment_status").notNull().default("PENDING"), // PENDING | PAID | FAILED
+    paymentMethod: text("payment_method"), // UPI | RAZORPAY
+    razorpayOrderId: text("razorpay_order_id"),
+    razorpayPaymentId: text("razorpay_payment_id"),
+    paidAt: tz("paid_at"),
+    webhookEvents: jsonb("webhook_events").$type<{ id: string; type: string; ts: string }[]>().notNull().default([]),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("bookings_slot_idx").on(t.slotKey), index("bookings_customer_idx").on(t.customerId), index("bookings_status_idx").on(t.status)],
+);

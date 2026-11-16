@@ -1,25 +1,48 @@
 import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { plans, tasks } from "@/db/schema";
+import { bookings } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
-import { inr, fmtDate } from "@/lib/format";
-import { readinessPct } from "@/lib/statemachine";
+import { StatusChip } from "@/components/orders/StatusChip";
+import { PaymentChip } from "@/components/payments/PaymentChip";
 
 export const metadata = { title: "Orders" };
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ f?: string }> }) {
   const user = await requireUser(["CUSTOMER"]);
-  const f = (await searchParams).f ?? "active";
-  const ps = await db.select().from(plans).where(eq(plans.customerId, user.id)).orderBy(desc(plans.createdAt));
-  const ts = await db.select().from(tasks);
-  const rows = ps.map((p) => { const mine = ts.filter((t) => t.planId === p.id); const pct = readinessPct(mine.map((t) => t.status)); return { p, pct, done: pct === 100 }; }).filter(({ p, done }) => (f === "active" ? ["approved", "sent"].includes(p.status) && !done : f === "completed" ? done : p.status === "rejected" || p.status === "superseded"));
+  const f = (await searchParams).f ?? "all";
+  const rows = await db.select().from(bookings).where(eq(bookings.customerId, user.id)).orderBy(desc(bookings.createdAt));
+  const filtered = rows.filter((r) => {
+    if (f === "all") return true;
+    if (f === "active") return ["RECEIVED", "ASSIGNED", "IN_PROGRESS"].includes(r.status);
+    if (f === "completed") return r.status === "COMPLETED";
+    if (f === "cancelled") return r.status === "CANCELLED";
+    return true;
+  });
+
   return (
-    <div className="space-y-4">
-      <h1 className="display text-3xl">Orders</h1>
-      <div className="flex gap-2">{["active", "completed", "cancelled"].map((x) => <Link key={x} href={`/app/orders?f=${x}`} className="chip capitalize" aria-pressed={f === x}>{x}</Link>)}</div>
-      {rows.length === 0 && <p className="hand py-10 text-center text-2xl">Nothing here yet.</p>}
-      {rows.map(({ p, pct }) => <div key={p.id} className="rounded-2xl border border-ink/20 bg-paper p-4"><div className="flex justify-between"><b className="display text-xl">{p.title}</b><span className="mono">{inr(p.total)}</span></div><div className="mono text-xs opacity-70">{fmtDate(p.createdAt)} · {p.status === "sent" ? "plan ready" : `${pct}% ready`}</div><div className="mt-3 flex gap-2"><Link href={p.status === "sent" ? `/app/plans/${p.id}` : `/app/orders/${p.id}`} className="btn btn-forest btn-sm">Dekho</Link><Link href={`/app?text=${encodeURIComponent(p.title)}`} className="btn btn-cream btn-sm" onClick={undefined}>Rebook</Link></div></div>)}
+    <div className="mx-auto max-w-[900px] space-y-4 p-4 md:p-6">
+      <h1 className="text-2xl font-bold tracking-tight text-[#0E1A17]">My orders</h1>
+      <div className="flex flex-wrap gap-2">
+        {["all", "active", "completed", "cancelled"].map((x) => (
+          <Link key={x} href={`/app/orders?f=${x}`} className={`min-h-[36px] rounded-[10px] border px-3 py-1.5 text-xs font-semibold capitalize ${f === x ? "border-[#0B2B26] bg-[#0B2B26] text-white" : "border-[#E3E8E4] bg-white text-[#4B5A55] hover:border-[#0B2B26]"}`}>{x}</Link>
+        ))}
+      </div>
+      {filtered.length === 0 && <div className="rounded-[12px] border border-[#E3E8E4] bg-white p-12 text-center"><p className="text-sm font-semibold text-[#0E1A17]">No orders yet.</p><p className="mt-1 text-xs text-[#4B5A55]">Book one of the 4 live services from the storefront. Dwarka Sectors 6, 10, 12 · Scheduled slots 8am–8pm.</p></div>}
+      <div className="grid gap-3">
+        {filtered.map((r) => (
+          <Link key={r.id} href={`/app/orders/${r.id}`} className="flex flex-col justify-between rounded-[12px] border border-[#E3E8E4] bg-white p-4 hover:border-[#0B2B26]">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-bold text-[#0E1A17]">{r.serviceName}</div>
+                <div className="mt-1 text-xs text-[#4B5A55]">{new Date(r.slotStart).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })} — {new Date(r.slotEnd).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit" })} · {r.address}</div>
+                <div className="mt-1 text-xs font-medium text-[#0E1A17]">Rs {r.total} · Qty {r.quantity}</div>
+              </div>
+              <div className="flex flex-col items-end gap-1.5"><StatusChip status={r.status} /><PaymentChip status={r.paymentStatus} /></div>
+            </div>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
