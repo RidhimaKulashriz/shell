@@ -28,10 +28,10 @@ export async function GET(req: Request) {
     const services = rows.map((r) => ({
       id: r.id,
       slug: r.slug,
-      name: r.name,
+      name: r.nameEn,
       category: r.categorySlug,
       price: Math.round(r.baseRate / 100),
-      description: r.description,
+      unit: r.unit,
       bookable: BOOKABLE_SLUGS.has(r.slug),
     }));
 
