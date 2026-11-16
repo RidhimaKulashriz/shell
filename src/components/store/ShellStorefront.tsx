@@ -169,17 +169,27 @@ export function ShellStorefront() {
     });
   };
 
-  const handleApplyCoupon = () => {
+  const handleApplyCoupon = async () => {
     const code = couponCode.trim().toUpperCase();
     setCouponError("");
-    if (code === "WELCOME100") {
-      setAppliedCoupon({ code, discount: 100 });
-    } else if (code === "FIRST50") {
-      setAppliedCoupon({ code, discount: 50 });
-    } else if (code === "WEEKEND15") {
-      setAppliedCoupon({ code, discount: Math.round(itemSubtotal * 0.15) });
-    } else {
-      setCouponError("Invalid code. Try WELCOME100, FIRST50, or WEEKEND15.");
+    if (!code) {
+      setCouponError("Please enter a coupon code.");
+      return;
+    }
+    try {
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, subtotal: itemSubtotal }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCouponError(data.error || "Invalid or expired coupon code.");
+        return;
+      }
+      setAppliedCoupon({ code: data.code ?? code, discount: Number(data.discount ?? 0) });
+    } catch {
+      setCouponError("Unable to validate coupon right now. Please try again.");
     }
   };
 
